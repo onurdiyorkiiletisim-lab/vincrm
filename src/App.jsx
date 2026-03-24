@@ -548,7 +548,14 @@ export default function App() {
   const fetchLeads=async()=>{ setLoading(true); const{data}=await supabase.from("leads").select("*").order("created_at",{ascending:false}); setLeads(data||[]); setLoading(false); };
   const filtered=useMemo(()=>leads.filter(l=>{ const q=search.toLowerCase(); return(!q||l.name?.toLowerCase().includes(q)||l.kurum?.toLowerCase().includes(q)||l.il?.toLowerCase().includes(q))&&(filterStatus==="tümü"||l.status===filterStatus); }),[leads,search,filterStatus]);
   const stats=useMemo(()=>({ total:leads.length, kazanildi:leads.filter(l=>l.status==="kazanildi").length, topOg:leads.filter(l=>l.status==="kazanildi").reduce((s,l)=>s+(Number(l.ogrenci_sayisi)||0),0) }),[leads]);
+const [seciliLeads,setSeciliLeads]=useState(new Set());
+const [topluSilMode,setTopluSilMode]=useState(false);
+const [topluSilConfirm,setTopluSilConfirm]=useState(false);
 
+const toggleSecim=(id)=>setSeciliLeads(prev=>{ const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+const tumunuSec=()=>setSeciliLeads(prev=>prev.size===filtered.length?new Set():new Set(filtered.map(l=>l.id)));
+const topluSil=async()=>{ await supabase.from("leads").delete().in("id",[...seciliLeads]); setSeciliLeads(new Set()); setTopluSilMode(false); setTopluSilConfirm(false); fetchLeads(); };
+```
   const openAdd=()=>{setForm(EMPTY_FORM);setModal("add");};
   const openEdit=(lead)=>{ setForm({name:lead.name||"",phone:lead.phone||"",il:lead.il||"",ilce:lead.ilce||"",kurum:lead.kurum||"",sinavTipi:lead.sinav_tipi||[],ogrenciSayisi:lead.ogrenci_sayisi||"",status:lead.status||"yeni",note:lead.note||""}); setModal(lead);setDetailId(null); };
   const toggleSinav=(key)=>setForm(f=>({...f,sinavTipi:f.sinavTipi.includes(key)?f.sinavTipi.filter(x=>x!==key):[...f.sinavTipi,key]}));
@@ -580,9 +587,12 @@ export default function App() {
           <div style={{fontFamily:"'DM Mono',monospace",fontWeight:500,fontSize:16,letterSpacing:"-0.03em",color:DARK}}>vin<span style={{color:ACCENT}}>takip</span></div>
         </div>
         <div style={{flex:1}}/>
-        {sayfa==="leads"&&<button onClick={()=>setShowImport(true)} style={{background:"#F3F4F6",border:"none",padding:"8px 10px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"#6B7280",marginRight:6}}>📥</button>}
+        {sayfa==="leads"&&<button onClick={()=>setTopluSilMode(!topluSilMode)} style={{background:topluSilMode?"#FEE2E2":"#F3F4F6",border:"none",padding:"8px 10px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",color:topluSilMode?"#DC2626":"#6B7280",marginRight:6}}>🗑️</button>}
+{sayfa==="leads"&&!topluSilMode&&<button onClick={()=>setShowImport(true)}
+``` style={{background:"#F3F4F6",border:"none",padding:"8px 10px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"#6B7280",marginRight:6}}>📥</button>}
         <button onClick={()=>supabase.auth.signOut()} style={{background:"#FEE2E2",border:"none",padding:"8px 10px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",color:"#DC2626"}}>Çıkış</button>
-        {sayfa==="leads"&&<button onClick={openAdd} style={{...S.btnPrimary,padding:"9px 16px",marginLeft:6,fontSize:13}}>+ Yeni</button>}
+        {sayfa==="leads"&&!topluSilMode&&<button onClick={openAdd}
+``` style={{...S.btnPrimary,padding:"9px 16px",marginLeft:6,fontSize:13}}>+ Yeni</button>}
       </div>
 
       <div style={{paddingBottom:80}}>
@@ -607,8 +617,19 @@ export default function App() {
             {loading&&<div style={{textAlign:"center",padding:"40px",color:"#9CA3AF"}}>Yükleniyor…</div>}
             {!loading&&filtered.length===0&&<div style={{textAlign:"center",padding:"40px",color:"#9CA3AF"}}>Kayıt bulunamadı.</div>}
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {filtered.map(lead=>(
-                <div key={lead.id} className="lead-card" onClick={()=>setDetailId(lead.id)}>
+              {topluSilMode&&(
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,background:"#FEE2E2",borderRadius:12,padding:"10px 14px"}}>
+    <button onClick={tumunuSec} style={{background:"none",border:"none",fontSize:13,fontWeight:700,color:"#DC2626",cursor:"pointer",fontFamily:"inherit"}}>
+      {seciliLeads.size===filtered.length?"Seçimi Kaldır":"Tümünü Seç"} ({seciliLeads.size}/{filtered.length})
+    </button>
+    {seciliLeads.size>0&&<button onClick={()=>setTopluSilConfirm(true)} style={{background:"#DC2626",color:"#fff",border:"none",padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑️ {seciliLeads.size} Kaydı Sil</button>}
+  </div>
+)}
+{filtered.map(lead=>(
+  <div key={lead.id} className="lead-card" onClick={()=>topluSilMode?toggleSecim(lead.id):setDetailId(lead.id)}
+    style={{background:seciliLeads.has(lead.id)?"#FEF2F2":"#fff",borderColor:seciliLeads.has(lead.id)?"#FCA5A5":"#F3F4F6"}}>
+    {topluSilMode&&<div style={{position:"absolute",top:14,right:14,width:20,height:20,borderRadius:6,background:seciliLeads.has(lead.id)?"#DC2626":"#F3F4F6",border:`2px solid ${seciliLeads.has(lead.id)?"#DC2626":"#D1D5DB"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>{seciliLeads.has(lead.id)?"✓":""}</div>}
+```
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                     <div style={{flex:1,minWidth:0,marginRight:10}}><div style={{fontWeight:800,fontSize:15,color:DARK,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lead.name}</div><div style={{fontSize:12,color:"#9CA3AF",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lead.kurum||"—"}</div></div>
                     <StatusBadge statusKey={lead.status}/>
@@ -646,7 +667,21 @@ export default function App() {
       {modal&&sayfa==="leads"&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)}><div style={S.sheet}><div style={{padding:"16px 20px",borderBottom:"1px solid #F3F4F6",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}><div style={{fontWeight:800,fontSize:16,color:DARK}}>{modal==="add"?"Yeni Lead":"Lead Düzenle"}</div><button onClick={()=>setModal(null)} style={S.closeBtn}>×</button></div><div style={{overflowY:"auto",flex:1,padding:"14px 20px",display:"flex",flexDirection:"column",gap:12}}><div style={S.field}><label style={S.label}>Ad Soyad *</label><input {...inp("name")} placeholder="Ahmet Yılmaz" style={S.input}/></div><div style={S.field}><label style={S.label}>Telefon</label><input {...inp("phone")} type="tel" placeholder="05__ ___ __ __" style={S.input}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div style={S.field}><label style={S.label}>İl</label><select {...inp("il")} style={S.input}><option value="">Seçiniz</option>{ILLER.map(il=><option key={il}>{il}</option>)}</select></div><div style={S.field}><label style={S.label}>İlçe</label><input {...inp("ilce")} placeholder="İlçe" style={S.input}/></div></div><div style={S.field}><label style={S.label}>Kurum</label><input {...inp("kurum")} placeholder="Gelecek Dershanesi" style={S.input}/></div><div><div style={{...S.label,marginBottom:8}}>Sınav Tipi</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>{SINAV_TIPLERI.map(s=>{const a=form.sinavTipi.includes(s.key); return(<button key={s.key} type="button" className={`sinav-btn${a?" on":""}`} onClick={()=>toggleSinav(s.key)}><div style={{fontWeight:800,fontSize:14}}>{s.label}</div><div style={{fontSize:9,opacity:.6,marginTop:2}}>{s.desc}</div>{a&&<div style={{fontSize:13,marginTop:3}}>✓</div>}</button>);})}</div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div style={S.field}><label style={S.label}>Öğrenci Sayısı</label><input {...inp("ogrenciSayisi")} type="number" min="0" placeholder="150" style={S.input}/></div><div style={S.field}><label style={S.label}>Durum</label><select {...inp("status")} style={S.input}>{STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></div></div><div style={S.field}><label style={S.label}>Not</label><textarea {...inp("note")} rows={2} style={{...S.input,resize:"vertical"}}/></div></div><div style={{padding:"12px 20px 28px",borderTop:"1px solid #F3F4F6",display:"flex",gap:8,flexShrink:0}}>{modal!=="add"&&<button onClick={()=>setConfirmDel(modal.id)} style={{...S.btnGhost,color:"#DC2626",borderColor:"#FECACA"}}>Sil</button>}<button onClick={()=>setModal(null)} style={S.btnGhost}>İptal</button><button onClick={saveForm} style={{...S.btnPrimary,flex:1}}>Kaydet</button></div></div></div>)}
 
       {confirmDel&&sayfa==="leads"&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmDel(null)}><div style={S.sheet}><div style={{padding:"32px 24px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🗑️</div><div style={{fontWeight:800,fontSize:16,marginBottom:8,color:DARK}}>Sil?</div><div style={{fontSize:13,color:"#9CA3AF",marginBottom:24}}>Bu işlem geri alınamaz.</div><div style={{display:"flex",gap:10}}><button onClick={()=>setConfirmDel(null)} style={{...S.btnGhost,flex:1}}>İptal</button><button onClick={()=>deleteLead(confirmDel)} style={{...S.btnPrimary,flex:1,background:"linear-gradient(135deg,#EF4444,#DC2626)"}}>Sil</button></div></div></div></div>)}
-
+{topluSilConfirm&&(
+  <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setTopluSilConfirm(false)}>
+    <div style={S.sheet}>
+      <div style={{padding:"32px 24px",textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:12}}>🗑️</div>
+        <div style={{fontWeight:800,fontSize:16,marginBottom:8,color:DARK}}>{seciliLeads.size} kaydı sil?</div>
+        <div style={{fontSize:13,color:"#9CA3AF",marginBottom:24}}>Bu işlem geri alınamaz.</div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={()=>setTopluSilConfirm(false)} style={{...S.btnGhost,flex:1}}>İptal</button>
+          <button onClick={topluSil} style={{...S.btnPrimary,flex:1,background:"linear-gradient(135deg,#EF4444,#DC2626)"}}>Evet, Sil</button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {showImport&&<BulkImportModal onClose={()=>setShowImport(false)} onImport={fetchLeads} userId={session.user.id}/>}
     </div>
   );
