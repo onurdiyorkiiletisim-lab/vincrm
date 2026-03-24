@@ -48,7 +48,6 @@ const SinavBadge = ({types}) => (
   </div>
 );
 
-// ── LOGIN ──────────────────────────────────────────────────────────────────
 function LoginScreen() {
   const [email,setEmail]=useState(""); const [password,setPassword]=useState(""); const [error,setError]=useState(""); const [loading,setLoading]=useState(false);
   const handleLogin = async()=>{ setLoading(true);setError(""); const{error}=await supabase.auth.signInWithPassword({email,password}); if(error)setError("E-posta veya şifre hatalı."); setLoading(false); };
@@ -62,16 +61,13 @@ function LoginScreen() {
           <div style={S.field}><label style={S.label}>E-posta</label><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ornek@mail.com" style={S.input}/></div>
           <div style={S.field}><label style={S.label}>Şifre</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={S.input}/></div>
           {error&&<div style={{fontSize:13,color:"#ef4444",background:"#fef2f2",padding:"8px 12px",borderRadius:8}}>{error}</div>}
-          <button onClick={handleLogin} disabled={loading} style={{...S.btnPrimary,opacity:loading?.6:1,marginTop:4}}>
-            {loading?"Giriş yapılıyor...":"Giriş Yap"}
-          </button>
+          <button onClick={handleLogin} disabled={loading} style={{...S.btnPrimary,opacity:loading?.6:1,marginTop:4}}>{loading?"Giriş yapılıyor...":"Giriş Yap"}</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── BULK IMPORT ────────────────────────────────────────────────────────────
 function BulkImportModal({onClose,onImport,userId}) {
   const [rows,setRows]=useState([]); const [error,setError]=useState(""); const [loading,setLoading]=useState(false); const [done,setDone]=useState(false);
   const handleFile=(file)=>{ setError("");setRows([]); const r=new FileReader(); r.onload=(e)=>{ try{ const d=new Uint8Array(e.target.result); const wb=XLSX.read(d,{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]]; const j=XLSX.utils.sheet_to_json(ws,{defval:""}); if(!j.length){setError("Dosya boş.");return;} setRows(j); }catch{setError("Dosya okunamadı."); } }; r.readAsArrayBuffer(file); };
@@ -109,7 +105,6 @@ function BulkImportModal({onClose,onImport,userId}) {
   );
 }
 
-// ── RAPOR ──────────────────────────────────────────────────────────────────
 function RaporSayfasi({leads}) {
   const sd = STATUSES.map(s=>({...s,sayi:leads.filter(l=>l.status===s.key).length,oran:leads.length?Math.round(leads.filter(l=>l.status===s.key).length/leads.length*100):0}));
   const sinav = SINAV_TIPLERI.map(s=>({...s,sayi:leads.filter(l=>(l.sinav_tipi||[]).includes(s.key)).length}));
@@ -179,7 +174,6 @@ function RaporSayfasi({leads}) {
   );
 }
 
-// ── ÖDEME GEÇMİŞİ ──────────────────────────────────────────────────────────
 function OdemeModal({firma,userId,onClose}) {
   const [odemeler,setOdemeler]=useState([]); const [loading,setLoading]=useState(true);
   const [yeni,setYeni]=useState({tutar:firma.tutar||"",tarih:new Date().toISOString().slice(0,10),odeme_yapti:true});
@@ -199,23 +193,16 @@ function OdemeModal({firma,userId,onClose}) {
           <button onClick={onClose} style={S.closeBtn}>×</button>
         </div>
         <div style={{overflowY:"auto",flex:1,padding:"12px 16px",display:"flex",flexDirection:"column",gap:12}}>
-          {/* Bu ay toggle */}
           <div style={{background:buAyO?.odeme_yapti?"#ecfdf5":"#fef2f2",border:`1.5px solid ${buAyO?.odeme_yapti?"#10b981":"#ef4444"}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div>
-              <div style={{fontWeight:700,fontSize:13}}>{ayLabel(buAy())}</div>
-              <div style={{fontSize:12,color:"#888",marginTop:1}}>{buAyO?.odeme_yapti?`✅ ${Number(buAyO?.tutar||0).toLocaleString("tr")} ₺`:"❌ Ödenmedi"}</div>
-            </div>
-            <button onClick={toggleBuAy} style={{padding:"8px 14px",borderRadius:99,border:"none",fontWeight:700,fontSize:12,cursor:"pointer",background:buAyO?.odeme_yapti?"#10b981":"#ef4444",color:"#fff"}}>
-              {buAyO?.odeme_yapti?"Ödedi ✓":"Ödenmedi"}
-            </button>
+            <div><div style={{fontWeight:700,fontSize:13}}>{ayLabel(buAy())}</div><div style={{fontSize:12,color:"#888",marginTop:1}}>{buAyO?.odeme_yapti?`✅ ${Number(buAyO?.tutar||0).toLocaleString("tr")} ₺`:"❌ Ödenmedi"}</div></div>
+            <button onClick={toggleBuAy} style={{padding:"8px 14px",borderRadius:99,border:"none",fontWeight:700,fontSize:12,cursor:"pointer",background:buAyO?.odeme_yapti?"#10b981":"#ef4444",color:"#fff"}}>{buAyO?.odeme_yapti?"Ödedi ✓":"Ödenmedi"}</button>
           </div>
-          {/* Ay seç */}
           <div style={{background:"#f9f9f9",borderRadius:12,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
             <div style={{fontWeight:700,fontSize:12,color:"#555"}}>📝 Ödeme Kaydı</div>
             <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
               {sonAylar.map(ay=>{const v=odemeler.find(o=>o.ay===ay); const a=seciliAy===ay; return(
                 <button key={ay} onClick={()=>{setSeciliAy(ay);if(v)setYeni({tutar:v.tutar||"",tarih:v.odeme_tarihi||new Date().toISOString().slice(0,10),odeme_yapti:v.odeme_yapti});else setYeni({tutar:firma.tutar||"",tarih:new Date().toISOString().slice(0,10),odeme_yapti:false});}}
-                  style={{padding:"5px 11px",borderRadius:99,border:`1.5px solid ${a?"#1a1a1a":"#e8e8e8"}`,background:a?"#1a1a1a":"#fff",color:a?"#fff":"#555",fontSize:10,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
+                  style={{padding:"5px 11px",borderRadius:99,border:`1.5px solid ${a?"#1a1a1a":"#e8e8e8"}`,background:a?"#1a1a1a":"#fff",color:a?"#fff":"#555",fontSize:10,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit"}}>
                   {ayLabel(ay)} {v?(v.odeme_yapti?"✅":"❌"):""}
                 </button>
               );})}
@@ -231,7 +218,6 @@ function OdemeModal({firma,userId,onClose}) {
             </div>
             <button onClick={kaydet} disabled={kayitLoading} style={{...S.btnPrimary,opacity:kayitLoading?.6:1}}>💾 {kayitLoading?"Kaydediliyor...":"Kaydet"}</button>
           </div>
-          {/* Geçmiş */}
           <div>
             <div style={{fontWeight:700,fontSize:12,color:"#555",marginBottom:8,display:"flex",justifyContent:"space-between"}}>
               <span>📋 Ödeme Geçmişi</span>
@@ -255,7 +241,6 @@ function OdemeModal({firma,userId,onClose}) {
   );
 }
 
-// ── AJANS ──────────────────────────────────────────────────────────────────
 function AjansSayfasi({userId}) {
   const [firmalar,setFirmalar]=useState([]); const [loading,setLoading]=useState(true);
   const [modal,setModal]=useState(null); const [form,setForm]=useState(EMPTY_FIRMA);
@@ -265,45 +250,16 @@ function AjansSayfasi({userId}) {
   useEffect(()=>{fetchF();},[]);
   const fetchF=async()=>{ setLoading(true); const{data}=await supabase.from("firmalar").select("*").order("created_at",{ascending:false}); setFirmalar(data||[]);
     if(data?.length){const{data:od}=await supabase.from("odeme_gecmisi").select("firma_id,odeme_yapti").eq("ay",buAy()); const m={}; (od||[]).forEach(o=>{m[o.firma_id]=o.odeme_yapti;}); setOdemeDur(m);} setLoading(false); };
-{/* Kişi Bazlı Kazanç */}
-<div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px",marginBottom:12}}>
-  <div style={{fontWeight:700,fontSize:12,color:"#555",marginBottom:10}}>💸 Bu Ay Kişi Bazlı Kazanç</div>
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-    {[{ad:"Ertuğrul",val:stats.ertugrul,renk:"#6366f1"},{ad:"Burak",val:stats.burak,renk:"#f59e0b"},{ad:"Onur",val:stats.onur,renk:"#10b981"}].map(k=>(
-      <div key={k.ad} style={{textAlign:"center",background:"#f9f9f9",borderRadius:10,padding:"10px 6px"}}>
-        <div style={{fontSize:10,color:"#bbb",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>{k.ad}</div>
-        <div style={{fontSize:15,fontWeight:700,color:k.renk}}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
-      </div>
-    ))}
-  </div>
-</div>
-  const stats=useMemo(()=>({ toplamF:firmalar.length, const stats=useMemo(()=>({ toplamF:firmalar.length, odeyenler:Object.values(odemeDur).filter(Boolean).length, toplamT:firmalar.reduce((s,f)=>s+(Number(f.tutar)||0),0), tahsil:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.tutar)||0),0),
-  ertugrul:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.ertugrul)||0),0),
-  burak:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.burak)||0),0),
-  onur:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.onur)||0),0),
-}),[firmalar,odemeDur]);
-```
 
-
-<div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px",marginBottom:12}}>
-  <div style={{fontWeight:700,fontSize:12,color:"#555",marginBottom:10}}>💸 Bu Ay Kişi Bazlı Kazanç</div>
-  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-    {[{ad:"Ertuğrul",val:stats.ertugrul,renk:"#6366f1"},{ad:"Burak",val:stats.burak,renk:"#f59e0b"},{ad:"Onur",val:stats.onur,renk:"#10b981"}].map(k=>(
-      <div key={k.ad} style={{textAlign:"center",background:"#f9f9f9",borderRadius:10,padding:"10px 6px"}}>
-        <div style={{fontSize:10,color:"#bbb",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>{k.ad}</div>
-        <div style={{fontSize:15,fontWeight:700,color:k.renk}}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
-      </div>
-    ))}
-  </div>
-</div>
-```
-
-Ayrıca **Ctrl+F** ile şunu aratın:
-```toplamT:firmalar.reduce((s,f)=>s+(Number(f.tutar)||0),0), tahsil:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.tutar)||0),0),
-  ertugrul:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.ertugrul)||0),0),
-  burak:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.burak)||0),0),
-  onur:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.onur)||0),0),
-<button onClick={openAdd} style={{...S.btnPrimary,width:"100%"
+  const stats=useMemo(()=>({
+    toplamF:firmalar.length,
+    odeyenler:Object.values(odemeDur).filter(Boolean).length,
+    toplamT:firmalar.reduce((s,f)=>s+(Number(f.tutar)||0),0),
+    tahsil:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.tutar)||0),0),
+    ertugrul:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.ertugrul)||0),0),
+    burak:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.burak)||0),0),
+    onur:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.onur)||0),0),
+  }),[firmalar,odemeDur]);
 
   const openAdd=()=>{setForm(EMPTY_FIRMA);setModal("add");};
   const openEdit=(f)=>{setForm({firma_adi:f.firma_adi,tutar:f.tutar,odeme_tipi:f.odeme_tipi,ertugrul:f.ertugrul||"",burak:f.burak||"",onur:f.onur||"",notlar:f.notlar||""});setModal(f);setDetailF(null);};
@@ -313,7 +269,8 @@ Ayrıca **Ctrl+F** ile şunu aratın:
 
   return (
     <div style={{padding:"12px",maxWidth:640,margin:"0 auto",paddingBottom:90}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+      {/* STATS */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
         {[{icon:"🏢",label:"Toplam Firma",value:stats.toplamF},{icon:"✅",label:"Bu Ay Ödedi",value:`${stats.odeyenler}/${stats.toplamF}`},{icon:"💰",label:"Toplam Tutar",value:stats.toplamT.toLocaleString("tr")+"₺"},{icon:"🏦",label:"Tahsil Edilen",value:stats.tahsil.toLocaleString("tr")+"₺"}].map(s=>(
           <div key={s.label} style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"12px 14px"}}>
             <div style={{fontSize:18,marginBottom:5}}>{s.icon}</div>
@@ -322,11 +279,28 @@ Ayrıca **Ctrl+F** ile şunu aratın:
           </div>
         ))}
       </div>
+
+      {/* KİŞİ BAZLI KAZANÇ */}
+      <div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px",marginBottom:12}}>
+        <div style={{fontWeight:700,fontSize:12,color:"#555",marginBottom:10}}>💸 Bu Ay Kişi Bazlı Kazanç</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+          {[{ad:"Ertuğrul",val:stats.ertugrul,renk:"#6366f1"},{ad:"Burak",val:stats.burak,renk:"#f59e0b"},{ad:"Onur",val:stats.onur,renk:"#10b981"}].map(k=>(
+            <div key={k.ad} style={{textAlign:"center",background:"#f9f9f9",borderRadius:10,padding:"10px 6px"}}>
+              <div style={{fontSize:10,color:"#bbb",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>{k.ad}</div>
+              <div style={{fontSize:15,fontWeight:700,color:k.renk}}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* YENİ FİRMA */}
       <button onClick={openAdd} style={{...S.btnPrimary,width:"100%",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
         <span style={{fontSize:17}}>+</span> Yeni Firma Ekle
       </button>
+
       {loading&&<div style={{textAlign:"center",padding:"40px",color:"#ccc"}}>Yükleniyor…</div>}
       {!loading&&firmalar.length===0&&<div style={{textAlign:"center",padding:"40px",color:"#ccc"}}>Henüz firma yok.</div>}
+
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {firmalar.map(f=>{const odedi=odemeDur[f.id]; return(
           <div key={f.id} style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"13px 14px"}}>
@@ -335,7 +309,7 @@ Ayrıca **Ctrl+F** ile şunu aratın:
                 <div style={{fontWeight:700,fontSize:15}}>{f.firma_adi}</div>
                 <div style={{fontSize:12,color:"#aaa",marginTop:2}}>{Number(f.tutar).toLocaleString("tr")} ₺ · <span style={{color:f.odeme_tipi==="faturali"?"#3b82f6":"#10b981",fontWeight:600}}>{f.odeme_tipi==="faturali"?"🧾 Faturalı":"💵 Nakit"}</span></div>
               </div>
-              <button onClick={()=>setOdemeModal(f)} style={{padding:"5px 10px",borderRadius:99,border:"none",fontWeight:700,fontSize:11,cursor:"pointer",background:odedi?"#ecfdf5":"#fef2f2",color:odedi?"#10b981":"#ef4444",flexShrink:0}}>
+              <button onClick={()=>setOdemeModal(f)} style={{padding:"5px 10px",borderRadius:99,border:"none",fontWeight:700,fontSize:11,cursor:"pointer",background:odedi?"#ecfdf5":"#fef2f2",color:odedi?"#10b981":"#ef4444",flexShrink:0,fontFamily:"inherit"}}>
                 {odedi?"✅ Ödedi":"❌ Ödemedi"}
               </button>
             </div>
@@ -347,12 +321,11 @@ Ayrıca **Ctrl+F** ile şunu aratın:
                 </div>
               ))}
             </div>
-            <button onClick={()=>setOdemeModal(f)} style={{width:"100%",background:"#f5f5f5",border:"none",padding:"8px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",color:"#444"}}>📋 Ödeme Geçmişi</button>
+            <button onClick={()=>setOdemeModal(f)} style={{width:"100%",background:"#f5f5f5",border:"none",padding:"8px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",color:"#444",fontFamily:"inherit"}}>📋 Ödeme Geçmişi</button>
           </div>
         );})}
       </div>
 
-      {/* Detail */}
       {detailF&&(
         <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDetailF(null)}>
           <div style={S.sheet}>
@@ -389,7 +362,6 @@ Ayrıca **Ctrl+F** ile şunu aratın:
         </div>
       )}
 
-      {/* Add/Edit */}
       {modal&&(
         <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div style={S.sheet}>
@@ -415,7 +387,7 @@ Ayrıca **Ctrl+F** ile şunu aratın:
                   {Number(form.tutar)>0&&Number(form.ertugrul||0)+Number(form.burak||0)+Number(form.onur||0)!==Number(form.tutar)&&<span style={{color:"#ef4444",marginLeft:5}}>⚠️</span>}
                 </div>
               </div>
-              <div style={S.field}><label style={S.label}>Not (opsiyonel)</label><textarea {...inp("notlar")} rows={2} placeholder="Ek notlar…" style={{...S.input,resize:"vertical"}}/></div>
+              <div style={S.field}><label style={S.label}>Not (opsiyonel)</label><textarea {...inp("notlar")} rows={2} style={{...S.input,resize:"vertical"}}/></div>
             </div>
             <div style={{padding:"10px 16px 28px",borderTop:"1px solid #f0f0f0",display:"flex",gap:8,flexShrink:0}}>
               <button onClick={()=>setModal(null)} style={{...S.btnGhost,flex:1}}>İptal</button>
@@ -445,7 +417,6 @@ Ayrıca **Ctrl+F** ile şunu aratın:
   );
 }
 
-// ── ANA APP ────────────────────────────────────────────────────────────────
 export default function App() {
   const [session,setSession]=useState(null); const [leads,setLeads]=useState([]); const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState(""); const [filterStatus,setFilterStatus]=useState("tümü");
@@ -481,11 +452,10 @@ export default function App() {
         .sinav-btn{border:2px solid #e8e8e8;border-radius:10px;padding:9px 6px;cursor:pointer;background:#fff;text-align:center;width:100%}
         .sinav-btn.on{border-color:#1a1a1a;background:#1a1a1a;color:#fff}
         .chip{padding:7px 13px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid transparent;white-space:nowrap;background:none}
-        .card{background:#fff;border:1px solid #ebebeb;border-radius:12px;padding:13px 14px;cursor:pointer;transition:opacity .1s}
+        .card{background:#fff;border:1px solid #ebebeb;border-radius:12px;padding:13px 14px;cursor:pointer}
         .card:active{opacity:.8}
       `}</style>
 
-      {/* TOP BAR — sadece logo + sağ aksiyonlar */}
       <div style={{background:"#fff",borderBottom:"1px solid #ebebeb",padding:"0 14px",display:"flex",alignItems:"center",height:52,position:"sticky",top:0,zIndex:50}}>
         <div style={{fontFamily:"'DM Mono',monospace",fontWeight:500,fontSize:17,letterSpacing:"-0.04em"}}>crm<span style={{color:"#6366f1"}}>.</span></div>
         <div style={{flex:1}}/>
@@ -494,7 +464,6 @@ export default function App() {
         {sayfa==="leads"&&<button onClick={openAdd} style={{...S.btnPrimary,padding:"8px 14px",marginLeft:6,fontSize:13}}>+ Yeni</button>}
       </div>
 
-      {/* İÇERİK */}
       <div style={{paddingBottom:72}}>
         {sayfa==="leads"&&(
           <div style={{padding:"12px 12px 0",maxWidth:640,margin:"0 auto"}}>
@@ -554,7 +523,6 @@ export default function App() {
         );})}
       </div>
 
-      {/* LEAD DETAIL */}
       {currentLead&&(
         <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDetailId(null)}>
           <div style={S.sheet}>
@@ -581,7 +549,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ADD/EDIT LEAD */}
       {modal&&sayfa==="leads"&&(
         <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div style={S.sheet}>
@@ -617,14 +584,13 @@ export default function App() {
             </div>
             <div style={{padding:"10px 16px 28px",borderTop:"1px solid #f0f0f0",display:"flex",gap:8,flexShrink:0}}>
               {modal!=="add"&&<button onClick={()=>setConfirmDel(modal.id)} style={{...S.btnGhost,color:"#ef4444",borderColor:"#fecaca"}}>Sil</button>}
-              <button onClick={()=>setModal(null)} style={{...S.btnGhost}}>İptal</button>
+              <button onClick={()=>setModal(null)} style={S.btnGhost}>İptal</button>
               <button onClick={saveForm} style={{...S.btnPrimary,flex:1}}>Kaydet</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* DELETE LEAD */}
       {confirmDel&&sayfa==="leads"&&(
         <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmDel(null)}>
           <div style={S.sheet}>
