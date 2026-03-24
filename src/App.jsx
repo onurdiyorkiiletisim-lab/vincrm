@@ -33,6 +33,7 @@ const ILLER = [
 ];
 
 const EMPTY_FORM = { name:"", phone:"", il:"", ilce:"", kurum:"", sinavTipi:[], ogrenciSayisi:"", status:"yeni", note:"" };
+const EMPTY_FIRMA = { firma_adi:"", tutar:"", odeme_tipi:"faturali", odeme_yapti:false, ertuğrul:"", burak:"", onur:"", notlar:"" };
 
 const StatusBadge = ({ statusKey }) => {
   const s = STATUSES.find(x => x.key === statusKey) || STATUSES[0];
@@ -92,7 +93,7 @@ function BulkImportModal({ onClose, onImport, userId }) {
         const wb = XLSX.read(data, { type:"array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(ws, { defval:"" });
-        if (!json.length) { setError("Dosya boş görünüyor."); return; }
+        if (!json.length) { setError("Dosya boş."); return; }
         setRows(json);
       } catch { setError("Dosya okunamadı."); }
     };
@@ -108,13 +109,13 @@ function BulkImportModal({ onClose, onImport, userId }) {
     if (!rows.length) return;
     setLoading(true);
     const payload = rows.map(r => ({
-      name: r["Ad Soyad"]||r["ad soyad"]||r["name"]||r["Name"]||r["full_name"]||r["Full Name"]||r["first_name"]||"",
-      phone: String(r["Telefon"]||r["telefon"]||r["phone"]||r["Phone Number"]||r["phone_number"]||""),
-      kurum: r["Kurum"]||r["kurum"]||r["school"]||r["School"]||"",
+      name: r["Ad Soyad"]||r["ad soyad"]||r["name"]||r["Name"]||r["full_name"]||"",
+      phone: String(r["Telefon"]||r["telefon"]||r["phone"]||r["Phone Number"]||""),
+      kurum: r["Kurum"]||r["kurum"]||r["school"]||"",
       status:"yeni", sinav_tipi:[], ogrenci_sayisi:0, user_id:userId,
     })).filter(r => r.name||r.phone);
     const { error } = await supabase.from("leads").insert(payload);
-    if (error) setError("Yükleme hatası: "+error.message);
+    if (error) setError("Hata: "+error.message);
     else { setDone(true); onImport(); }
     setLoading(false);
   };
@@ -135,7 +136,7 @@ function BulkImportModal({ onClose, onImport, userId }) {
             <>
               <div style={{ background:"#f0f9ff", border:"1px solid #bae6fd", borderRadius:10, padding:"12px 14px" }}>
                 <div style={{ fontSize:13, fontWeight:600, color:"#0369a1", marginBottom:6 }}>📋 Önce şablonu indirin</div>
-                <button onClick={downloadTemplate} style={{ background:"#0ea5e9", color:"#fff", border:"none", padding:"7px 14px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>⬇️ Şablon İndir (.xlsx)</button>
+                <button onClick={downloadTemplate} style={{ background:"#0ea5e9", color:"#fff", border:"none", padding:"7px 14px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>⬇️ Şablon İndir</button>
               </div>
               <div onClick={()=>document.getElementById("fileInput").click()} style={{ border:"2px dashed #e8e8e8", borderRadius:12, padding:"24px 20px", textAlign:"center", cursor:"pointer", background:"#fafafa" }}>
                 <div style={{ fontSize:32, marginBottom:8 }}>📂</div>
@@ -149,7 +150,7 @@ function BulkImportModal({ onClose, onImport, userId }) {
           )}
         </div>
         <div style={{ padding:"12px 20px 24px", borderTop:"1px solid #f0f0f0", display:"flex", gap:8, flexShrink:0 }}>
-          <button onClick={onClose} style={{ flex:1, background:"transparent", border:"1.5px solid #e5e5e5", padding:"11px", borderRadius:10, fontSize:14, fontWeight:500, cursor:"pointer" }}>{done?"Kapat":"İptal"}</button>
+          <button onClick={onClose} style={{ flex:1, background:"transparent", border:"1.5px solid #e5e5e5", padding:"11px", borderRadius:10, fontSize:14, cursor:"pointer" }}>{done?"Kapat":"İptal"}</button>
           {!done && <button onClick={handleImport} disabled={!rows.length||loading} style={{ flex:2, background:"#1a1a1a", color:"#fff", border:"none", padding:"11px", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", opacity:(!rows.length||loading)?.4:1 }}>{loading?"Yükleniyor...":rows.length>0?`${rows.length} Kaydı Yükle`:"Dosya Seçin"}</button>}
         </div>
       </div>
@@ -157,49 +158,30 @@ function BulkImportModal({ onClose, onImport, userId }) {
   );
 }
 
-// RAPOR SAYFASI
 function RaporSayfasi({ leads }) {
   const statusDagilim = STATUSES.map(s => ({
-    ...s,
-    sayi: leads.filter(l => l.status === s.key).length,
-    oran: leads.length ? Math.round(leads.filter(l => l.status === s.key).length / leads.length * 100) : 0,
+    ...s, sayi: leads.filter(l=>l.status===s.key).length,
+    oran: leads.length ? Math.round(leads.filter(l=>l.status===s.key).length/leads.length*100) : 0,
   }));
-
-  const sinavDagilim = SINAV_TIPLERI.map(s => ({
-    ...s,
-    sayi: leads.filter(l => (l.sinav_tipi||[]).includes(s.key)).length,
-  }));
-
+  const sinavDagilim = SINAV_TIPLERI.map(s => ({ ...s, sayi: leads.filter(l=>(l.sinav_tipi||[]).includes(s.key)).length }));
   const ilDagilim = useMemo(() => {
     const map = {};
-    leads.forEach(l => { if (l.il) map[l.il] = (map[l.il]||0) + 1; });
-    return Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0,8);
+    leads.forEach(l=>{ if(l.il) map[l.il]=(map[l.il]||0)+1; });
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8);
   }, [leads]);
-
   const aylikDagilim = useMemo(() => {
     const map = {};
-    leads.forEach(l => {
-      if (l.created_at) {
-        const ay = l.created_at.slice(0,7);
-        map[ay] = (map[ay]||0) + 1;
-      }
-    });
-    return Object.entries(map).sort((a,b) => a[0].localeCompare(b[0])).slice(-6);
+    leads.forEach(l=>{ if(l.created_at) { const ay=l.created_at.slice(0,7); map[ay]=(map[ay]||0)+1; } });
+    return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).slice(-6);
   }, [leads]);
-
-  const maxAylik = Math.max(...aylikDagilim.map(a => a[1]), 1);
-  const maxIl = Math.max(...ilDagilim.map(i => i[1]), 1);
-
-  const toplamOgrenci = leads.reduce((s,l) => s+(Number(l.ogrenci_sayisi)||0), 0);
-  const kazanilanOgrenci = leads.filter(l=>l.status==="kazanildi").reduce((s,l) => s+(Number(l.ogrenci_sayisi)||0), 0);
+  const maxAylik = Math.max(...aylikDagilim.map(a=>a[1]),1);
+  const maxIl = Math.max(...ilDagilim.map(i=>i[1]),1);
+  const toplamOgrenci = leads.reduce((s,l)=>s+(Number(l.ogrenci_sayisi)||0),0);
+  const kazanilanOgrenci = leads.filter(l=>l.status==="kazanildi").reduce((s,l)=>s+(Number(l.ogrenci_sayisi)||0),0);
   const kazanmaOrani = leads.filter(l=>["kazanildi","kaybedildi"].includes(l.status)).length
-    ? Math.round(leads.filter(l=>l.status==="kazanildi").length / leads.filter(l=>["kazanildi","kaybedildi"].includes(l.status)).length * 100)
-    : 0;
-
+    ? Math.round(leads.filter(l=>l.status==="kazanildi").length/leads.filter(l=>["kazanildi","kaybedildi"].includes(l.status)).length*100) : 0;
   return (
     <div style={{ padding:"14px", maxWidth:640, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
-
-      {/* Özet Kartlar */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         {[
           { icon:"👥", label:"Toplam Lead", value:leads.length },
@@ -214,71 +196,318 @@ function RaporSayfasi({ leads }) {
           </div>
         ))}
       </div>
-
-      {/* Durum Dağılımı */}
       <div style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"16px" }}>
         <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>📊 Durum Dağılımı</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {statusDagilim.map(s => (
-            <div key={s.key}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ fontSize:13, fontWeight:500 }}>{s.label}</span>
-                <span style={{ fontSize:13, color:"#888" }}>{s.sayi} lead — %{s.oran}</span>
-              </div>
-              <div style={{ height:8, background:"#f5f5f5", borderRadius:99, overflow:"hidden" }}>
-                <div style={{ height:"100%", width:`${s.oran}%`, background:s.color, borderRadius:99, transition:"width .3s" }} />
-              </div>
+        {statusDagilim.map(s => (
+          <div key={s.key} style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+              <span style={{ fontSize:13, fontWeight:500 }}>{s.label}</span>
+              <span style={{ fontSize:13, color:"#888" }}>{s.sayi} — %{s.oran}</span>
             </div>
-          ))}
-        </div>
+            <div style={{ height:8, background:"#f5f5f5", borderRadius:99 }}>
+              <div style={{ height:"100%", width:`${s.oran}%`, background:s.color, borderRadius:99 }} />
+            </div>
+          </div>
+        ))}
       </div>
-
-      {/* Aylık Lead Grafiği */}
-      {aylikDagilim.length > 0 && (
+      {aylikDagilim.length>0 && (
         <div style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"16px" }}>
           <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>📈 Aylık Lead Girişi</div>
           <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:100 }}>
-            {aylikDagilim.map(([ay, sayi]) => (
+            {aylikDagilim.map(([ay,sayi]) => (
               <div key={ay} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
                 <div style={{ fontSize:11, fontWeight:600, color:"#6366f1" }}>{sayi}</div>
-                <div style={{ width:"100%", background:"#6366f1", borderRadius:"4px 4px 0 0", height:`${(sayi/maxAylik)*80}px`, minHeight:4, transition:"height .3s" }} />
-                <div style={{ fontSize:9, color:"#bbb", textAlign:"center" }}>{ay.slice(5)}/{ay.slice(2,4)}</div>
+                <div style={{ width:"100%", background:"#6366f1", borderRadius:"4px 4px 0 0", height:`${(sayi/maxAylik)*80}px`, minHeight:4 }} />
+                <div style={{ fontSize:9, color:"#bbb" }}>{ay.slice(5)}/{ay.slice(2,4)}</div>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* Sınav Tipi Dağılımı */}
       <div style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"16px" }}>
         <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🎓 Sınav Tipi Dağılımı</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
           {sinavDagilim.map(s => (
             <div key={s.key} style={{ textAlign:"center", background:"#f9f9f9", borderRadius:10, padding:"12px 8px" }}>
-              <div style={{ fontSize:20, fontWeight:700, color: s.key==="TYT"?"#92400e":s.key==="AYT"?"#5b21b6":"#15803d" }}>{s.sayi}</div>
+              <div style={{ fontSize:20, fontWeight:700, color:s.key==="TYT"?"#92400e":s.key==="AYT"?"#5b21b6":"#15803d" }}>{s.sayi}</div>
               <div style={{ fontSize:12, fontWeight:700, marginTop:2 }}>{s.label}</div>
               <div style={{ fontSize:10, color:"#bbb" }}>{s.desc}</div>
             </div>
           ))}
         </div>
       </div>
-
-      {/* İllere Göre Dağılım */}
-      {ilDagilim.length > 0 && (
+      {ilDagilim.length>0 && (
         <div style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"16px" }}>
-          <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🗺️ İllere Göre Dağılım (Top 8)</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {ilDagilim.map(([il, sayi]) => (
-              <div key={il}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                  <span style={{ fontSize:13, fontWeight:500 }}>{il}</span>
-                  <span style={{ fontSize:13, color:"#888" }}>{sayi}</span>
-                </div>
-                <div style={{ height:6, background:"#f5f5f5", borderRadius:99, overflow:"hidden" }}>
-                  <div style={{ height:"100%", width:`${(sayi/maxIl)*100}%`, background:"#3b82f6", borderRadius:99 }} />
+          <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🗺️ İllere Göre Dağılım</div>
+          {ilDagilim.map(([il,sayi]) => (
+            <div key={il} style={{ marginBottom:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                <span style={{ fontSize:13, fontWeight:500 }}>{il}</span>
+                <span style={{ fontSize:13, color:"#888" }}>{sayi}</span>
+              </div>
+              <div style={{ height:6, background:"#f5f5f5", borderRadius:99 }}>
+                <div style={{ height:"100%", width:`${(sayi/maxIl)*100}%`, background:"#3b82f6", borderRadius:99 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// AJANS SAYFASI
+function AjansSayfasi({ userId }) {
+  const [firmalar, setFirmalar] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState(EMPTY_FIRMA);
+  const [detailId, setDetailId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  useEffect(() => { fetchFirmalar(); }, []);
+
+  const fetchFirmalar = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("firmalar").select("*").order("created_at", { ascending: false });
+    setFirmalar(data || []);
+    setLoading(false);
+  };
+
+  const stats = useMemo(() => ({
+    toplamFirma: firmalar.length,
+    odeyenler: firmalar.filter(f => f.odeme_yapti).length,
+    toplamTutar: firmalar.reduce((s, f) => s + (Number(f.tutar) || 0), 0),
+    tahsilEdilen: firmalar.filter(f => f.odeme_yapti).reduce((s, f) => s + (Number(f.tutar) || 0), 0),
+  }), [firmalar]);
+
+  const openAdd = () => { setForm(EMPTY_FIRMA); setModal("add"); };
+  const openEdit = (f) => { setForm({ ...f, ertuğrul: f.ertugrul||"", burak: f.burak||"", onur: f.onur||"" }); setModal(f); setDetailId(null); };
+
+  const saveForm = async () => {
+    if (!form.firma_adi.trim()) return;
+    const payload = {
+      firma_adi: form.firma_adi,
+      tutar: Number(form.tutar) || 0,
+      odeme_tipi: form.odeme_tipi,
+      odeme_yapti: form.odeme_yapti,
+      ertugrul: Number(form.ertuğrul) || 0,
+      burak: Number(form.burak) || 0,
+      onur: Number(form.onur) || 0,
+      notlar: form.notlar,
+      user_id: userId,
+    };
+    if (modal === "add") await supabase.from("firmalar").insert([payload]);
+    else await supabase.from("firmalar").update(payload).eq("id", modal.id);
+    setModal(null); fetchFirmalar();
+  };
+
+  const deleteFirma = async (id) => {
+    await supabase.from("firmalar").delete().eq("id", id);
+    setConfirmDelete(null); setModal(null); setDetailId(null); fetchFirmalar();
+  };
+
+  const toggleOdeme = async (firma) => {
+    await supabase.from("firmalar").update({ odeme_yapti: !firma.odeme_yapti }).eq("id", firma.id);
+    fetchFirmalar();
+  };
+
+  const inp = (field) => ({ value: form[field], onChange: e => setForm(f => ({ ...f, [field]: e.target.value })) });
+  const currentFirma = detailId ? firmalar.find(f => f.id === detailId) : null;
+
+  return (
+    <div style={{ padding:"14px", maxWidth:640, margin:"0 auto" }}>
+
+      {/* STATS */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+        {[
+          { icon:"🏢", label:"Toplam Firma", value: stats.toplamFirma },
+          { icon:"✅", label:"Bu Ay Ödedi", value: stats.odeyenler },
+          { icon:"💰", label:"Toplam Tutar", value: stats.toplamTutar.toLocaleString("tr")+" ₺" },
+          { icon:"🏦", label:"Tahsil Edilen", value: stats.tahsilEdilen.toLocaleString("tr")+" ₺" },
+        ].map(s => (
+          <div key={s.label} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"12px 14px" }}>
+            <div style={{ fontSize:18, marginBottom:5 }}>{s.icon}</div>
+            <div style={{ fontSize:18, fontWeight:700, letterSpacing:"-0.02em", lineHeight:1 }}>{s.value}</div>
+            <div style={{ fontSize:10, color:"#bbb", marginTop:4, fontWeight:500 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* YENİ FİRMA BUTONU */}
+      <button onClick={openAdd} style={{ width:"100%", background:"#1a1a1a", color:"#fff", border:"none", padding:"12px", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", marginBottom:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+        <span style={{ fontSize:18 }}>+</span> Yeni Firma Ekle
+      </button>
+
+      {/* FİRMA LİSTESİ */}
+      {loading && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Yükleniyor…</div>}
+      {!loading && firmalar.length === 0 && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Henüz firma eklenmedi.</div>}
+
+      <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+        {firmalar.map(firma => (
+          <div key={firma.id} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"13px 14px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+              <div style={{ flex:1, cursor:"pointer" }} onClick={() => setDetailId(firma.id)}>
+                <div style={{ fontWeight:700, fontSize:15 }}>{firma.firma_adi}</div>
+                <div style={{ fontSize:12, color:"#aaa", marginTop:2 }}>
+                  {Number(firma.tutar).toLocaleString("tr")} ₺ &nbsp;·&nbsp;
+                  <span style={{ color: firma.odeme_tipi==="faturali" ? "#3b82f6" : "#10b981", fontWeight:600 }}>
+                    {firma.odeme_tipi==="faturali" ? "🧾 Faturalı" : "💵 Nakit"}
+                  </span>
                 </div>
               </div>
-            ))}
+              {/* ÖDEME TOGGLE */}
+              <button onClick={() => toggleOdeme(firma)} style={{
+                padding:"5px 12px", borderRadius:99, fontSize:11, fontWeight:700, cursor:"pointer", border:"none",
+                background: firma.odeme_yapti ? "#ecfdf5" : "#fef2f2",
+                color: firma.odeme_yapti ? "#10b981" : "#ef4444",
+              }}>
+                {firma.odeme_yapti ? "✅ Ödedi" : "❌ Ödemedi"}
+              </button>
+            </div>
+            {/* BÖLÜŞÜM */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+              {[
+                { ad:"Ertuğrul", val: firma.ertugrul },
+                { ad:"Burak",    val: firma.burak },
+                { ad:"Onur",     val: firma.onur },
+              ].map(k => (
+                <div key={k.ad} style={{ background:"#f9f9f9", borderRadius:8, padding:"8px 10px", textAlign:"center" }}>
+                  <div style={{ fontSize:10, color:"#bbb", fontWeight:600, textTransform:"uppercase" }}>{k.ad}</div>
+                  <div style={{ fontSize:14, fontWeight:700, marginTop:2 }}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DETAIL */}
+      {currentFirma && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setDetailId(null)}>
+          <div className="bottom-sheet">
+            <div style={{ padding:"12px 16px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <div style={{ fontWeight:700, fontSize:16 }}>{currentFirma.firma_adi}</div>
+              <button className="close-btn" onClick={()=>setDetailId(null)}>×</button>
+            </div>
+            <div style={{ overflowY:"auto", flex:1, padding:"14px 16px", display:"flex", flexDirection:"column", gap:12 }}>
+              {[
+                { icon:"💰", label:"Aylık Tutar", val: Number(currentFirma.tutar).toLocaleString("tr")+" ₺" },
+                { icon:"🧾", label:"Ödeme Tipi", val: currentFirma.odeme_tipi==="faturali"?"Faturalı":"Nakit" },
+                { icon:"📅", label:"Bu Ay Ödeme", val: currentFirma.odeme_yapti?"✅ Ödedi":"❌ Ödemedi" },
+              ].map(r => (
+                <div key={r.label} style={{ display:"flex", gap:12, alignItems:"center" }}>
+                  <div style={{ width:38, height:38, background:"#f5f5f5", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{r.icon}</div>
+                  <div>
+                    <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase" }}>{r.label}</div>
+                    <div style={{ fontSize:14, fontWeight:500 }}>{r.val}</div>
+                  </div>
+                </div>
+              ))}
+              <div style={{ background:"#f9f9f9", borderRadius:10, padding:"12px" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#999", textTransform:"uppercase", marginBottom:8 }}>Bölüşüm</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+                  {[
+                    { ad:"Ertuğrul", val:currentFirma.ertugrul },
+                    { ad:"Burak",    val:currentFirma.burak },
+                    { ad:"Onur",     val:currentFirma.onur },
+                  ].map(k => (
+                    <div key={k.ad} style={{ textAlign:"center" }}>
+                      <div style={{ fontSize:10, color:"#bbb", fontWeight:600 }}>{k.ad}</div>
+                      <div style={{ fontSize:15, fontWeight:700, marginTop:2 }}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {currentFirma.notlar && (
+                <div style={{ background:"#fafafa", border:"1px solid #f0f0f0", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>Not</div>
+                  <div style={{ fontSize:13, color:"#555" }}>{currentFirma.notlar}</div>
+                </div>
+              )}
+            </div>
+            <div style={{ padding:"10px 16px 24px", borderTop:"1px solid #f0f0f0", display:"flex", gap:8, flexShrink:0 }}>
+              <button className="btn-ghost" style={{ flex:1 }} onClick={()=>setDetailId(null)}>Kapat</button>
+              <button className="btn-primary" style={{ flex:2 }} onClick={()=>openEdit(currentFirma)}>✏️ Düzenle</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD/EDIT MODAL */}
+      {modal && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div className="bottom-sheet">
+            <div style={{ padding:"12px 16px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <div style={{ fontWeight:700, fontSize:15 }}>{modal==="add"?"Yeni Firma Ekle":"Firma Düzenle"}</div>
+              <button className="close-btn" onClick={()=>setModal(null)}>×</button>
+            </div>
+            <div style={{ overflowY:"auto", flex:1, padding:"14px 16px", display:"flex", flexDirection:"column", gap:12 }}>
+              <div className="field"><label>Firma Adı *</label><input {...inp("firma_adi")} placeholder="Örn: ABC Dijital" /></div>
+              <div className="field"><label>Aylık Tutar (₺)</label><input {...inp("tutar")} type="number" placeholder="Örn: 5000" /></div>
+              <div className="field">
+                <label>Ödeme Tipi</label>
+                <select {...inp("odeme_tipi")}>
+                  <option value="faturali">🧾 Faturalı</option>
+                  <option value="nakit">💵 Nakit</option>
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", marginBottom:8 }}>Bu Ay Ödeme Yaptı mı?</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                  {[{val:true,label:"✅ Evet, Ödedi"},{val:false,label:"❌ Hayır"}].map(o => (
+                    <button key={String(o.val)} type="button" onClick={()=>setForm(f=>({...f,odeme_yapti:o.val}))}
+                      style={{ padding:"10px", borderRadius:10, border:`2px solid ${form.odeme_yapti===o.val?"#1a1a1a":"#e8e8e8"}`, background:form.odeme_yapti===o.val?"#1a1a1a":"#fff", color:form.odeme_yapti===o.val?"#fff":"#555", fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", marginBottom:8 }}>Bölüşüm (₺)</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+                  {[
+                    { key:"ertuğrul", label:"Ertuğrul" },
+                    { key:"burak",    label:"Burak" },
+                    { key:"onur",     label:"Onur" },
+                  ].map(k => (
+                    <div key={k.key} className="field">
+                      <label>{k.label}</label>
+                      <input {...inp(k.key)} type="number" placeholder="0" />
+                    </div>
+                  ))}
+                </div>
+                {/* Toplam kontrol */}
+                <div style={{ fontSize:12, color:"#888", marginTop:6, textAlign:"right" }}>
+                  Toplam: {(Number(form.ertuğrul||0)+Number(form.burak||0)+Number(form.onur||0)).toLocaleString("tr")} ₺
+                  {Number(form.tutar)>0 && Number(form.ertuğrul||0)+Number(form.burak||0)+Number(form.onur||0) !== Number(form.tutar) &&
+                    <span style={{ color:"#ef4444", marginLeft:6 }}>⚠️ Tutar eşleşmiyor</span>
+                  }
+                </div>
+              </div>
+              <div className="field"><label>Not</label><textarea {...inp("notlar")} rows={2} placeholder="Ek notlar…" style={{ resize:"vertical" }} /></div>
+            </div>
+            <div style={{ padding:"10px 16px 24px", borderTop:"1px solid #f0f0f0", display:"flex", gap:8, flexShrink:0 }}>
+              {modal!=="add"&&<button className="btn-ghost" onClick={()=>setConfirmDelete(modal.id)} style={{ color:"#ef4444", borderColor:"#fecaca" }}>Sil</button>}
+              <button className="btn-ghost" onClick={()=>setModal(null)}>İptal</button>
+              <button className="btn-primary" onClick={saveForm} style={{ flex:1 }}>Kaydet</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setConfirmDelete(null)}>
+          <div className="bottom-sheet">
+            <div style={{ padding:"32px 24px", textAlign:"center" }}>
+              <div style={{ fontSize:40, marginBottom:12 }}>🗑️</div>
+              <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>Firmayı silmek istiyor musunuz?</div>
+              <div style={{ fontSize:13, color:"#aaa", marginBottom:24 }}>Bu işlem geri alınamaz.</div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button className="btn-ghost" style={{ flex:1 }} onClick={()=>setConfirmDelete(null)}>İptal</button>
+                <button className="btn-primary" onClick={()=>deleteFirma(confirmDelete)} style={{ flex:1, background:"#ef4444" }}>Evet, Sil</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -297,7 +526,7 @@ export default function App() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [showImport, setShowImport] = useState(false);
-  const [aktifSayfa, setAktifSayfa] = useState("leads"); // "leads" | "rapor"
+  const [aktifSayfa, setAktifSayfa] = useState("leads");
 
   useEffect(() => {
     supabase.auth.getSession().then(({data:{session}})=>setSession(session));
@@ -331,7 +560,7 @@ export default function App() {
     setForm({ name:lead.name||"", phone:lead.phone||"", il:lead.il||"", ilce:lead.ilce||"", kurum:lead.kurum||"", sinavTipi:lead.sinav_tipi||[], ogrenciSayisi:lead.ogrenci_sayisi||"", status:lead.status||"yeni", note:lead.note||"" });
     setModal(lead); setDetailId(null);
   };
-  const toggleSinav = (key) => setForm(f=>({...f, sinavTipi:f.sinavTipi.includes(key)?f.sinavTipi.filter(x=>x!==key):[...f.sinavTipi,key]}));
+  const toggleSinav = (key) => setForm(f=>({...f,sinavTipi:f.sinavTipi.includes(key)?f.sinavTipi.filter(x=>x!==key):[...f.sinavTipi,key]}));
   const saveForm = async () => {
     if (!form.name.trim()) return;
     const payload = { name:form.name, phone:form.phone, il:form.il, ilce:form.ilce, kurum:form.kurum, sinav_tipi:form.sinavTipi, ogrenci_sayisi:Number(form.ogrenciSayisi)||0, status:form.status, note:form.note, user_id:session.user.id };
@@ -355,7 +584,6 @@ export default function App() {
         *{box-sizing:border-box;margin:0;padding:0}
         input,select,textarea,button{font-family:inherit}
         .card-hover{transition:box-shadow .15s;cursor:pointer}
-        .card-hover:active{opacity:.85}
         .btn-primary{background:#1a1a1a;color:#fff;border:none;padding:11px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
         .btn-primary:disabled{opacity:.4;cursor:not-allowed}
         .btn-ghost{background:transparent;border:1.5px solid #e5e5e5;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;color:#555}
@@ -369,30 +597,27 @@ export default function App() {
         .bottom-sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;max-height:88vh;display:flex;flex-direction:column}
         .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center}
         @media(min-width:600px){.overlay{align-items:center}.bottom-sheet{border-radius:16px;max-width:500px;max-height:85vh}}
-        .nav-btn{background:none;border:none;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#888;transition:all .15s}
+        .nav-btn{background:none;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#888;transition:all .15s;white-space:nowrap}
         .nav-btn.active{background:#1a1a1a;color:#fff}
       `}</style>
 
       {/* TOP BAR */}
-      <div style={{ background:"#fff", borderBottom:"1px solid #ebebeb", padding:"0 14px", display:"flex", alignItems:"center", height:54, gap:8, position:"sticky", top:0, zIndex:50 }}>
-        <div style={{ fontFamily:"'DM Mono',monospace", fontWeight:500, fontSize:17, letterSpacing:"-0.04em" }}>crm<span style={{ color:"#6366f1" }}>.</span></div>
-        {/* NAVİGASYON */}
-        <div style={{ display:"flex", gap:4, marginLeft:8 }}>
+      <div style={{ background:"#fff", borderBottom:"1px solid #ebebeb", padding:"0 12px", display:"flex", alignItems:"center", height:54, gap:6, position:"sticky", top:0, zIndex:50, overflowX:"auto" }}>
+        <div style={{ fontFamily:"'DM Mono',monospace", fontWeight:500, fontSize:16, letterSpacing:"-0.04em", flexShrink:0 }}>crm<span style={{ color:"#6366f1" }}>.</span></div>
+        <div style={{ display:"flex", gap:3, marginLeft:4 }}>
           <button className={`nav-btn${aktifSayfa==="leads"?" active":""}`} onClick={()=>setAktifSayfa("leads")}>Leads</button>
           <button className={`nav-btn${aktifSayfa==="rapor"?" active":""}`} onClick={()=>setAktifSayfa("rapor")}>📊 Rapor</button>
+          <button className={`nav-btn${aktifSayfa==="ajans"?" active":""}`} onClick={()=>setAktifSayfa("ajans")}>🏢 Ajans</button>
         </div>
         <div style={{ flex:1 }} />
-        <button onClick={()=>setShowImport(true)} style={{ background:"#f5f5f5", border:"none", padding:"7px 11px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", color:"#444" }}>📥</button>
-        <button onClick={()=>supabase.auth.signOut()} style={{ background:"#f5f5f5", border:"none", padding:"7px 11px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", color:"#444" }}>Çıkış</button>
-        <button onClick={openAdd} style={{ background:"#1a1a1a", color:"#fff", border:"none", padding:"8px 14px", borderRadius:9, fontSize:13, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
-          <span style={{ fontSize:18, lineHeight:1 }}>+</span> Yeni
-        </button>
+        {aktifSayfa==="leads" && <button onClick={()=>setShowImport(true)} style={{ background:"#f5f5f5", border:"none", padding:"7px 10px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", color:"#444", flexShrink:0 }}>📥</button>}
+        <button onClick={()=>supabase.auth.signOut()} style={{ background:"#f5f5f5", border:"none", padding:"7px 10px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", color:"#444", flexShrink:0 }}>Çıkış</button>
+        {aktifSayfa==="leads" && <button onClick={openAdd} style={{ background:"#1a1a1a", color:"#fff", border:"none", padding:"8px 12px", borderRadius:9, fontSize:13, fontWeight:600, cursor:"pointer", flexShrink:0 }}>+ Yeni</button>}
       </div>
 
-      {/* RAPOR SAYFASI */}
       {aktifSayfa==="rapor" && <RaporSayfasi leads={leads} />}
+      {aktifSayfa==="ajans" && <AjansSayfasi userId={session.user.id} />}
 
-      {/* LEADS SAYFASI */}
       {aktifSayfa==="leads" && (
         <div style={{ padding:"14px", maxWidth:640, margin:"0 auto" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
@@ -408,19 +633,16 @@ export default function App() {
               </div>
             ))}
           </div>
-
           <div style={{ position:"relative", marginBottom:10 }}>
             <span style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:"#ccc", fontSize:15 }}>🔍</span>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="İsim, kurum veya il ara…" style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"10px 13px 10px 38px", fontSize:14, outline:"none", background:"#fff" }} />
           </div>
-
-          <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6, marginBottom:12, WebkitOverflowScrolling:"touch" }}>
+          <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6, marginBottom:12 }}>
             {[{key:"tümü",label:"Tümü"},...STATUSES].map(s => {
               const active = filterStatus===s.key;
               return <button key={s.key} className="chip-filter" onClick={()=>setFilterStatus(s.key)} style={{ background:active?"#1a1a1a":"#fff", color:active?"#fff":"#666", borderColor:active?"#1a1a1a":"#e8e8e8" }}>{s.label}</button>;
             })}
           </div>
-
           {loading && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Yükleniyor…</div>}
           {!loading && filtered.length===0 && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Kayıt bulunamadı.</div>}
           <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
@@ -447,16 +669,11 @@ export default function App() {
         </div>
       )}
 
-      {/* DETAIL */}
       {currentLead && (
         <div className="overlay" onClick={e=>e.target===e.currentTarget&&setDetailId(null)}>
           <div className="bottom-sheet">
-            <div style={{ padding:"12px 16px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0, position:"relative" }}>
-              <div style={{ position:"absolute", width:36, height:4, background:"#e5e5e5", borderRadius:99, left:"50%", transform:"translateX(-50%)", top:8 }} />
-              <div style={{ paddingTop:8 }}>
-                <div style={{ fontWeight:700, fontSize:16 }}>{currentLead.name}</div>
-                <div style={{ fontSize:12, color:"#aaa" }}>{currentLead.kurum}</div>
-              </div>
+            <div style={{ padding:"12px 16px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <div><div style={{ fontWeight:700, fontSize:16 }}>{currentLead.name}</div><div style={{ fontSize:12, color:"#aaa" }}>{currentLead.kurum}</div></div>
               <button className="close-btn" onClick={()=>setDetailId(null)}>×</button>
             </div>
             <div style={{ overflowY:"auto", flex:1, padding:"14px 16px", display:"flex", flexDirection:"column", gap:12 }}>
@@ -469,18 +686,18 @@ export default function App() {
                 <div key={r.label} style={{ display:"flex", gap:12, alignItems:"center" }}>
                   <div style={{ width:38, height:38, background:"#f5f5f5", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{r.icon}</div>
                   <div>
-                    <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", letterSpacing:".05em" }}>{r.label}</div>
+                    <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase" }}>{r.label}</div>
                     <div style={{ fontSize:14, fontWeight:500 }}>{r.val}</div>
                   </div>
                 </div>
               ))}
               <div>
-                <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", marginBottom:6 }}>Sınav Tipi</div>
+                <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:6 }}>Sınav Tipi</div>
                 <SinavBadge types={currentLead.sinav_tipi} />
               </div>
               {currentLead.note && (
                 <div style={{ background:"#fafafa", border:"1px solid #f0f0f0", borderRadius:10, padding:"10px 12px" }}>
-                  <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", marginBottom:4 }}>Not</div>
+                  <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>Not</div>
                   <div style={{ fontSize:13, color:"#555" }}>{currentLead.note}</div>
                 </div>
               )}
@@ -493,13 +710,11 @@ export default function App() {
         </div>
       )}
 
-      {/* ADD/EDIT */}
-      {modal && (
+      {modal && aktifSayfa==="leads" && (
         <div className="overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div className="bottom-sheet">
-            <div style={{ padding:"12px 16px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0, position:"relative" }}>
-              <div style={{ position:"absolute", width:36, height:4, background:"#e5e5e5", borderRadius:99, left:"50%", transform:"translateX(-50%)", top:8 }} />
-              <div style={{ fontWeight:700, fontSize:15, paddingTop:8 }}>{modal==="add"?"Yeni Lead Ekle":"Lead Düzenle"}</div>
+            <div style={{ padding:"12px 16px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <div style={{ fontWeight:700, fontSize:15 }}>{modal==="add"?"Yeni Lead Ekle":"Lead Düzenle"}</div>
               <button className="close-btn" onClick={()=>setModal(null)}>×</button>
             </div>
             <div style={{ overflowY:"auto", flex:1, padding:"14px 16px", display:"flex", flexDirection:"column", gap:12 }}>
@@ -511,7 +726,7 @@ export default function App() {
               </div>
               <div className="field"><label>Kurum İsmi</label><input {...inp("kurum")} placeholder="Örn: Gelecek Dershanesi" /></div>
               <div>
-                <div style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", marginBottom:8 }}>Sınav Tipi <span style={{ fontWeight:400, color:"#ccc", textTransform:"none", letterSpacing:0 }}>(çoklu seçim)</span></div>
+                <div style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", marginBottom:8 }}>Sınav Tipi</div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
                   {SINAV_TIPLERI.map(s => {
                     const active = form.sinavTipi.includes(s.key);
@@ -527,7 +742,7 @@ export default function App() {
               </div>
               <div className="field"><label>Öğrenci Sayısı</label><input {...inp("ogrenciSayisi")} type="number" min="0" placeholder="Örn: 150" /></div>
               <div className="field"><label>Durum</label><select {...inp("status")}>{STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
-              <div className="field"><label>Not</label><textarea {...inp("note")} rows={3} placeholder="Ek notlar…" style={{ resize:"vertical" }} /></div>
+              <div className="field"><label>Not</label><textarea {...inp("note")} rows={3} style={{ resize:"vertical" }} /></div>
             </div>
             <div style={{ padding:"10px 16px 24px", borderTop:"1px solid #f0f0f0", display:"flex", gap:8, flexShrink:0 }}>
               {modal!=="add"&&<button className="btn-ghost" onClick={()=>setConfirmDelete(modal.id)} style={{ color:"#ef4444", borderColor:"#fecaca" }}>Sil</button>}
@@ -538,8 +753,7 @@ export default function App() {
         </div>
       )}
 
-      {/* DELETE */}
-      {confirmDelete && (
+      {confirmDelete && aktifSayfa==="leads" && (
         <div className="overlay" onClick={e=>e.target===e.currentTarget&&setConfirmDelete(null)}>
           <div className="bottom-sheet">
             <div style={{ padding:"32px 24px", textAlign:"center" }}>
