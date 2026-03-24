@@ -33,7 +33,18 @@ const ILLER = [
 ];
 
 const EMPTY_FORM = { name:"", phone:"", il:"", ilce:"", kurum:"", sinavTipi:[], ogrenciSayisi:"", status:"yeni", note:"" };
-const EMPTY_FIRMA = { firma_adi:"", tutar:"", odeme_tipi:"faturali", odeme_yapti:false, ertuğrul:"", burak:"", onur:"", notlar:"" };
+const EMPTY_FIRMA = { firma_adi:"", tutar:"", odeme_tipi:"faturali", ertugrul:"", burak:"", onur:"", notlar:"" };
+
+const buAy = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+};
+
+const ayLabel = (ay) => {
+  const [yil, mon] = ay.split("-");
+  const aylar = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+  return `${aylar[parseInt(mon)-1]} ${yil}`;
+};
 
 const StatusBadge = ({ statusKey }) => {
   const s = STATUSES.find(x => x.key === statusKey) || STATUSES[0];
@@ -256,14 +267,177 @@ function RaporSayfasi({ leads }) {
   );
 }
 
-// AJANS SAYFASI
+// ÖDEME GEÇMİŞİ MODALI
+function OdemeGecmisiModal({ firma, userId, onClose }) {
+  const [odemeler, setOdemeler] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [yeniOdeme, setYeniOdeme] = useState({ tutar: firma.tutar||"", tarih: new Date().toISOString().slice(0,10), odeme_yapti: true });
+  const [kayitLoading, setKayitLoading] = useState(false);
+  const [seciliAy, setSeciliAy] = useState(buAy());
+
+  useEffect(() => { fetchOdemeler(); }, []);
+
+  const fetchOdemeler = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("odeme_gecmisi").select("*").eq("firma_id", firma.id).order("ay", { ascending: false });
+    setOdemeler(data || []);
+    setLoading(false);
+  };
+
+  const buAyOdeme = odemeler.find(o => o.ay === buAy());
+
+  const toggleBuAy = async () => {
+    if (buAyOdeme) {
+      await supabase.from("odeme_gecmisi").update({ odeme_yapti: !buAyOdeme.odeme_yapti }).eq("id", buAyOdeme.id);
+    } else {
+      await supabase.from("odeme_gecmisi").insert([{
+        firma_id: firma.id, user_id: userId, ay: buAy(),
+        tutar: Number(firma.tutar)||0, odeme_tarihi: new Date().toISOString().slice(0,10), odeme_yapti: true
+      }]);
+    }
+    fetchOdemeler();
+  };
+
+  const odemeKaydet = async () => {
+    setKayitLoading(true);
+    const mevcut = odemeler.find(o => o.ay === seciliAy);
+    if (mevcut) {
+      await supabase.from("odeme_gecmisi").update({ tutar: Number(yeniOdeme.tutar)||0, odeme_tarihi: yeniOdeme.tarih, odeme_yapti: yeniOdeme.odeme_yapti }).eq("id", mevcut.id);
+    } else {
+      await supabase.from("odeme_gecmisi").insert([{
+        firma_id: firma.id, user_id: userId, ay: seciliAy,
+        tutar: Number(yeniOdeme.tutar)||0, odeme_tarihi: yeniOdeme.tarih, odeme_yapti: yeniOdeme.odeme_yapti
+      }]);
+    }
+    await fetchOdemeler();
+    setKayitLoading(false);
+  };
+
+  // Son 6 ayı oluştur
+  const sonAylar = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    sonAylar.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+  }
+
+  const toplamOdenen = odemeler.filter(o=>o.odeme_yapti).reduce((s,o)=>s+(Number(o.tutar)||0),0);
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ background:"#fff", width:"100%", maxWidth:520, borderRadius:"20px 20px 0 0", maxHeight:"90vh", display:"flex", flexDirection:"column" }}>
+        {/* HEADER */}
+        <div style={{ padding:"12px 16px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+          <div>
+            <div style={{ fontWeight:700, fontSize:15 }}>{firma.firma_adi}</div>
+            <div style={{ fontSize:12, color:"#aaa" }}>Ödeme Takibi</div>
+          </div>
+          <button onClick={onClose} style={{ width:40, height:40, borderRadius:"50%", background:"#f0f0f0", border:"none", fontSize:20, cursor:"pointer" }}>×</button>
+        </div>
+
+        <div style={{ overflowY:"auto", flex:1, padding:"14px 16px", display:"flex", flexDirection:"column", gap:14 }}>
+
+          {/* BU AY HIZLI TOGGLE */}
+          <div style={{ background: buAyOdeme?.odeme_yapti ? "#ecfdf5" : "#fef2f2", border:`1.5px solid ${buAyOdeme?.odeme_yapti?"#10b981":"#ef4444"}`, borderRadius:12, padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div>
+              <div style={{ fontWeight:700, fontSize:14 }}>Bu Ay — {ayLabel(buAy())}</div>
+              <div style={{ fontSize:12, color:"#888", marginTop:2 }}>{buAyOdeme?.odeme_yapti ? `✅ Ödedi — ${Number(buAyOdeme?.tutar||0).toLocaleString("tr")} ₺` : "❌ Henüz ödenmedi"}</div>
+            </div>
+            <button onClick={toggleBuAy} style={{
+              padding:"8px 16px", borderRadius:99, border:"none", fontWeight:700, fontSize:13, cursor:"pointer",
+              background: buAyOdeme?.odeme_yapti ? "#10b981" : "#ef4444", color:"#fff"
+            }}>
+              {buAyOdeme?.odeme_yapti ? "Ödedi ✓" : "Ödenmedi"}
+            </button>
+          </div>
+
+          {/* AY SEÇ & KAYDET */}
+          <div style={{ background:"#f9f9f9", border:"1px solid #f0f0f0", borderRadius:12, padding:"14px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ fontWeight:700, fontSize:13 }}>📝 Ödeme Kaydı Ekle / Düzenle</div>
+
+            {/* Ay Seçimi */}
+            <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
+              {sonAylar.map(ay => {
+                const var_ = odemeler.find(o=>o.ay===ay);
+                const aktif = seciliAy === ay;
+                return (
+                  <button key={ay} onClick={()=>{ setSeciliAy(ay); if(var_) setYeniOdeme({ tutar:var_.tutar||"", tarih:var_.odeme_tarihi||new Date().toISOString().slice(0,10), odeme_yapti:var_.odeme_yapti }); else setYeniOdeme({ tutar:firma.tutar||"", tarih:new Date().toISOString().slice(0,10), odeme_yapti:false }); }}
+                    style={{ padding:"6px 12px", borderRadius:99, border:`1.5px solid ${aktif?"#1a1a1a":"#e8e8e8"}`, background:aktif?"#1a1a1a":"#fff", color:aktif?"#fff":"#555", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0 }}>
+                    {ayLabel(ay)} {var_ ? (var_.odeme_yapti?"✅":"❌") : ""}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:"#999", textTransform:"uppercase", display:"block", marginBottom:5 }}>Tutar (₺)</label>
+                <input value={yeniOdeme.tutar} onChange={e=>setYeniOdeme(f=>({...f,tutar:e.target.value}))} type="number" placeholder="0" style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"9px 12px", fontSize:14, outline:"none", background:"#fff" }} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:"#999", textTransform:"uppercase", display:"block", marginBottom:5 }}>Ödeme Tarihi</label>
+                <input value={yeniOdeme.tarih} onChange={e=>setYeniOdeme(f=>({...f,tarih:e.target.value}))} type="date" style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"9px 12px", fontSize:14, outline:"none", background:"#fff" }} />
+              </div>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              {[{val:true,label:"✅ Ödedi"},{val:false,label:"❌ Ödemedi"}].map(o => (
+                <button key={String(o.val)} onClick={()=>setYeniOdeme(f=>({...f,odeme_yapti:o.val}))}
+                  style={{ padding:"9px", borderRadius:10, border:`2px solid ${yeniOdeme.odeme_yapti===o.val?"#1a1a1a":"#e8e8e8"}`, background:yeniOdeme.odeme_yapti===o.val?"#1a1a1a":"#fff", color:yeniOdeme.odeme_yapti===o.val?"#fff":"#555", fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+
+            <button onClick={odemeKaydet} disabled={kayitLoading} style={{ background:"#1a1a1a", color:"#fff", border:"none", padding:"11px", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", opacity:kayitLoading?.6:1 }}>
+              {kayitLoading?"Kaydediliyor...":"💾 Kaydet"}
+            </button>
+          </div>
+
+          {/* GEÇMİŞ */}
+          <div>
+            <div style={{ fontWeight:700, fontSize:13, marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span>📋 Ödeme Geçmişi</span>
+              <span style={{ fontSize:12, color:"#10b981", fontWeight:600 }}>Toplam: {toplamOdenen.toLocaleString("tr")} ₺</span>
+            </div>
+            {loading && <div style={{ textAlign:"center", padding:"20px", color:"#ccc" }}>Yükleniyor…</div>}
+            {!loading && odemeler.length===0 && <div style={{ textAlign:"center", padding:"20px", color:"#ccc", fontSize:13 }}>Henüz ödeme kaydı yok.</div>}
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {odemeler.map(o => (
+                <div key={o.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", background: o.odeme_yapti?"#f0fdf4":"#fef2f2", borderRadius:10, padding:"10px 14px" }}>
+                  <div>
+                    <div style={{ fontWeight:600, fontSize:13 }}>{ayLabel(o.ay)}</div>
+                    {o.odeme_tarihi && <div style={{ fontSize:11, color:"#888", marginTop:1 }}>{new Date(o.odeme_tarihi).toLocaleDateString("tr-TR")}</div>}
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontWeight:700, fontSize:14, color: o.odeme_yapti?"#10b981":"#ef4444" }}>
+                      {o.odeme_yapti ? `+${Number(o.tutar).toLocaleString("tr")} ₺` : "❌"}
+                    </div>
+                    <div style={{ fontSize:11, color:"#aaa" }}>{o.odeme_yapti?"Ödendi":"Ödenmedi"}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding:"10px 16px 24px", borderTop:"1px solid #f0f0f0", flexShrink:0 }}>
+          <button onClick={onClose} style={{ width:"100%", background:"transparent", border:"1.5px solid #e5e5e5", padding:"11px", borderRadius:10, fontSize:14, fontWeight:500, cursor:"pointer" }}>Kapat</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AjansSayfasi({ userId }) {
   const [firmalar, setFirmalar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(EMPTY_FIRMA);
-  const [detailId, setDetailId] = useState(null);
+  const [detailFirma, setDetailFirma] = useState(null);
+  const [odemeModal, setOdemeModal] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [odemeDurumu, setOdemeDurumu] = useState({});
 
   useEffect(() => { fetchFirmalar(); }, []);
 
@@ -271,60 +445,50 @@ function AjansSayfasi({ userId }) {
     setLoading(true);
     const { data } = await supabase.from("firmalar").select("*").order("created_at", { ascending: false });
     setFirmalar(data || []);
+    // Bu ayın ödeme durumlarını çek
+    if (data?.length) {
+      const { data: odemeler } = await supabase.from("odeme_gecmisi").select("firma_id,odeme_yapti").eq("ay", buAy());
+      const map = {};
+      (odemeler||[]).forEach(o => { map[o.firma_id] = o.odeme_yapti; });
+      setOdemeDurumu(map);
+    }
     setLoading(false);
   };
 
   const stats = useMemo(() => ({
     toplamFirma: firmalar.length,
-    odeyenler: firmalar.filter(f => f.odeme_yapti).length,
-    toplamTutar: firmalar.reduce((s, f) => s + (Number(f.tutar) || 0), 0),
-    tahsilEdilen: firmalar.filter(f => f.odeme_yapti).reduce((s, f) => s + (Number(f.tutar) || 0), 0),
-  }), [firmalar]);
+    odeyenler: Object.values(odemeDurumu).filter(Boolean).length,
+    toplamTutar: firmalar.reduce((s,f)=>s+(Number(f.tutar)||0),0),
+    tahsilEdilen: firmalar.filter(f=>odemeDurumu[f.id]).reduce((s,f)=>s+(Number(f.tutar)||0),0),
+  }), [firmalar, odemeDurumu]);
 
   const openAdd = () => { setForm(EMPTY_FIRMA); setModal("add"); };
-  const openEdit = (f) => { setForm({ ...f, ertuğrul: f.ertugrul||"", burak: f.burak||"", onur: f.onur||"" }); setModal(f); setDetailId(null); };
+  const openEdit = (f) => { setForm({ firma_adi:f.firma_adi, tutar:f.tutar, odeme_tipi:f.odeme_tipi, ertugrul:f.ertugrul||"", burak:f.burak||"", onur:f.onur||"", notlar:f.notlar||"" }); setModal(f); setDetailFirma(null); };
 
   const saveForm = async () => {
     if (!form.firma_adi.trim()) return;
-    const payload = {
-      firma_adi: form.firma_adi,
-      tutar: Number(form.tutar) || 0,
-      odeme_tipi: form.odeme_tipi,
-      odeme_yapti: form.odeme_yapti,
-      ertugrul: Number(form.ertuğrul) || 0,
-      burak: Number(form.burak) || 0,
-      onur: Number(form.onur) || 0,
-      notlar: form.notlar,
-      user_id: userId,
-    };
-    if (modal === "add") await supabase.from("firmalar").insert([payload]);
-    else await supabase.from("firmalar").update(payload).eq("id", modal.id);
+    const payload = { firma_adi:form.firma_adi, tutar:Number(form.tutar)||0, odeme_tipi:form.odeme_tipi, ertugrul:Number(form.ertugrul)||0, burak:Number(form.burak)||0, onur:Number(form.onur)||0, notlar:form.notlar, user_id:userId };
+    if (modal==="add") await supabase.from("firmalar").insert([payload]);
+    else await supabase.from("firmalar").update(payload).eq("id",modal.id);
     setModal(null); fetchFirmalar();
   };
 
   const deleteFirma = async (id) => {
-    await supabase.from("firmalar").delete().eq("id", id);
-    setConfirmDelete(null); setModal(null); setDetailId(null); fetchFirmalar();
+    await supabase.from("firmalar").delete().eq("id",id);
+    setConfirmDelete(null); setModal(null); setDetailFirma(null); fetchFirmalar();
   };
 
-  const toggleOdeme = async (firma) => {
-    await supabase.from("firmalar").update({ odeme_yapti: !firma.odeme_yapti }).eq("id", firma.id);
-    fetchFirmalar();
-  };
-
-  const inp = (field) => ({ value: form[field], onChange: e => setForm(f => ({ ...f, [field]: e.target.value })) });
-  const currentFirma = detailId ? firmalar.find(f => f.id === detailId) : null;
+  const inp = (field) => ({ value:form[field], onChange:e=>setForm(f=>({...f,[field]:e.target.value})) });
 
   return (
     <div style={{ padding:"14px", maxWidth:640, margin:"0 auto" }}>
-
       {/* STATS */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
         {[
-          { icon:"🏢", label:"Toplam Firma", value: stats.toplamFirma },
-          { icon:"✅", label:"Bu Ay Ödedi", value: stats.odeyenler },
-          { icon:"💰", label:"Toplam Tutar", value: stats.toplamTutar.toLocaleString("tr")+" ₺" },
-          { icon:"🏦", label:"Tahsil Edilen", value: stats.tahsilEdilen.toLocaleString("tr")+" ₺" },
+          { icon:"🏢", label:"Toplam Firma",   value:stats.toplamFirma },
+          { icon:"✅", label:"Bu Ay Ödedi",    value:`${stats.odeyenler}/${stats.toplamFirma}` },
+          { icon:"💰", label:"Toplam Tutar",   value:stats.toplamTutar.toLocaleString("tr")+" ₺" },
+          { icon:"🏦", label:"Tahsil Edilen",  value:stats.tahsilEdilen.toLocaleString("tr")+" ₺" },
         ].map(s => (
           <div key={s.label} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"12px 14px" }}>
             <div style={{ fontSize:18, marginBottom:5 }}>{s.icon}</div>
@@ -334,67 +498,60 @@ function AjansSayfasi({ userId }) {
         ))}
       </div>
 
-      {/* YENİ FİRMA BUTONU */}
       <button onClick={openAdd} style={{ width:"100%", background:"#1a1a1a", color:"#fff", border:"none", padding:"12px", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", marginBottom:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
         <span style={{ fontSize:18 }}>+</span> Yeni Firma Ekle
       </button>
 
-      {/* FİRMA LİSTESİ */}
       {loading && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Yükleniyor…</div>}
-      {!loading && firmalar.length === 0 && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Henüz firma eklenmedi.</div>}
+      {!loading && firmalar.length===0 && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Henüz firma eklenmedi.</div>}
 
       <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
-        {firmalar.map(firma => (
-          <div key={firma.id} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"13px 14px" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-              <div style={{ flex:1, cursor:"pointer" }} onClick={() => setDetailId(firma.id)}>
-                <div style={{ fontWeight:700, fontSize:15 }}>{firma.firma_adi}</div>
-                <div style={{ fontSize:12, color:"#aaa", marginTop:2 }}>
-                  {Number(firma.tutar).toLocaleString("tr")} ₺ &nbsp;·&nbsp;
-                  <span style={{ color: firma.odeme_tipi==="faturali" ? "#3b82f6" : "#10b981", fontWeight:600 }}>
-                    {firma.odeme_tipi==="faturali" ? "🧾 Faturalı" : "💵 Nakit"}
-                  </span>
+        {firmalar.map(firma => {
+          const odedi = odemeDurumu[firma.id];
+          return (
+            <div key={firma.id} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"13px 14px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+                <div style={{ flex:1, cursor:"pointer" }} onClick={()=>setDetailFirma(firma)}>
+                  <div style={{ fontWeight:700, fontSize:15 }}>{firma.firma_adi}</div>
+                  <div style={{ fontSize:12, color:"#aaa", marginTop:2 }}>
+                    {Number(firma.tutar).toLocaleString("tr")} ₺ &nbsp;·&nbsp;
+                    <span style={{ color:firma.odeme_tipi==="faturali"?"#3b82f6":"#10b981", fontWeight:600 }}>
+                      {firma.odeme_tipi==="faturali"?"🧾 Faturalı":"💵 Nakit"}
+                    </span>
+                  </div>
                 </div>
+                <button onClick={()=>setOdemeModal(firma)} style={{ padding:"5px 12px", borderRadius:99, fontSize:11, fontWeight:700, cursor:"pointer", border:"none", background:odedi?"#ecfdf5":"#fef2f2", color:odedi?"#10b981":"#ef4444", flexShrink:0 }}>
+                  {odedi?"✅ Ödedi":"❌ Ödemedi"}
+                </button>
               </div>
-              {/* ÖDEME TOGGLE */}
-              <button onClick={() => toggleOdeme(firma)} style={{
-                padding:"5px 12px", borderRadius:99, fontSize:11, fontWeight:700, cursor:"pointer", border:"none",
-                background: firma.odeme_yapti ? "#ecfdf5" : "#fef2f2",
-                color: firma.odeme_yapti ? "#10b981" : "#ef4444",
-              }}>
-                {firma.odeme_yapti ? "✅ Ödedi" : "❌ Ödemedi"}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+                {[{ad:"Ertuğrul",val:firma.ertugrul},{ad:"Burak",val:firma.burak},{ad:"Onur",val:firma.onur}].map(k => (
+                  <div key={k.ad} style={{ background:"#f9f9f9", borderRadius:8, padding:"8px 10px", textAlign:"center" }}>
+                    <div style={{ fontSize:10, color:"#bbb", fontWeight:600, textTransform:"uppercase" }}>{k.ad}</div>
+                    <div style={{ fontSize:13, fontWeight:700, marginTop:2 }}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={()=>setOdemeModal(firma)} style={{ width:"100%", marginTop:10, background:"#f5f5f5", border:"none", padding:"8px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", color:"#444" }}>
+                📋 Ödeme Geçmişi
               </button>
             </div>
-            {/* BÖLÜŞÜM */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-              {[
-                { ad:"Ertuğrul", val: firma.ertugrul },
-                { ad:"Burak",    val: firma.burak },
-                { ad:"Onur",     val: firma.onur },
-              ].map(k => (
-                <div key={k.ad} style={{ background:"#f9f9f9", borderRadius:8, padding:"8px 10px", textAlign:"center" }}>
-                  <div style={{ fontSize:10, color:"#bbb", fontWeight:600, textTransform:"uppercase" }}>{k.ad}</div>
-                  <div style={{ fontSize:14, fontWeight:700, marginTop:2 }}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* DETAIL */}
-      {currentFirma && (
-        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setDetailId(null)}>
+      {/* FIRMA DETAIL */}
+      {detailFirma && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setDetailFirma(null)}>
           <div className="bottom-sheet">
             <div style={{ padding:"12px 16px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-              <div style={{ fontWeight:700, fontSize:16 }}>{currentFirma.firma_adi}</div>
-              <button className="close-btn" onClick={()=>setDetailId(null)}>×</button>
+              <div style={{ fontWeight:700, fontSize:16 }}>{detailFirma.firma_adi}</div>
+              <button className="close-btn" onClick={()=>setDetailFirma(null)}>×</button>
             </div>
             <div style={{ overflowY:"auto", flex:1, padding:"14px 16px", display:"flex", flexDirection:"column", gap:12 }}>
               {[
-                { icon:"💰", label:"Aylık Tutar", val: Number(currentFirma.tutar).toLocaleString("tr")+" ₺" },
-                { icon:"🧾", label:"Ödeme Tipi", val: currentFirma.odeme_tipi==="faturali"?"Faturalı":"Nakit" },
-                { icon:"📅", label:"Bu Ay Ödeme", val: currentFirma.odeme_yapti?"✅ Ödedi":"❌ Ödemedi" },
+                { icon:"💰", label:"Aylık Tutar", val:Number(detailFirma.tutar).toLocaleString("tr")+" ₺" },
+                { icon:"🧾", label:"Ödeme Tipi", val:detailFirma.odeme_tipi==="faturali"?"Faturalı":"Nakit" },
               ].map(r => (
                 <div key={r.label} style={{ display:"flex", gap:12, alignItems:"center" }}>
                   <div style={{ width:38, height:38, background:"#f5f5f5", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{r.icon}</div>
@@ -407,11 +564,7 @@ function AjansSayfasi({ userId }) {
               <div style={{ background:"#f9f9f9", borderRadius:10, padding:"12px" }}>
                 <div style={{ fontSize:11, fontWeight:700, color:"#999", textTransform:"uppercase", marginBottom:8 }}>Bölüşüm</div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-                  {[
-                    { ad:"Ertuğrul", val:currentFirma.ertugrul },
-                    { ad:"Burak",    val:currentFirma.burak },
-                    { ad:"Onur",     val:currentFirma.onur },
-                  ].map(k => (
+                  {[{ad:"Ertuğrul",val:detailFirma.ertugrul},{ad:"Burak",val:detailFirma.burak},{ad:"Onur",val:detailFirma.onur}].map(k => (
                     <div key={k.ad} style={{ textAlign:"center" }}>
                       <div style={{ fontSize:10, color:"#bbb", fontWeight:600 }}>{k.ad}</div>
                       <div style={{ fontSize:15, fontWeight:700, marginTop:2 }}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
@@ -419,22 +572,18 @@ function AjansSayfasi({ userId }) {
                   ))}
                 </div>
               </div>
-              {currentFirma.notlar && (
-                <div style={{ background:"#fafafa", border:"1px solid #f0f0f0", borderRadius:10, padding:"10px 12px" }}>
-                  <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>Not</div>
-                  <div style={{ fontSize:13, color:"#555" }}>{currentFirma.notlar}</div>
-                </div>
-              )}
+              {detailFirma.notlar && <div style={{ background:"#fafafa", border:"1px solid #f0f0f0", borderRadius:10, padding:"10px 12px" }}><div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>Not</div><div style={{ fontSize:13 }}>{detailFirma.notlar}</div></div>}
             </div>
             <div style={{ padding:"10px 16px 24px", borderTop:"1px solid #f0f0f0", display:"flex", gap:8, flexShrink:0 }}>
-              <button className="btn-ghost" style={{ flex:1 }} onClick={()=>setDetailId(null)}>Kapat</button>
-              <button className="btn-primary" style={{ flex:2 }} onClick={()=>openEdit(currentFirma)}>✏️ Düzenle</button>
+              <button className="btn-ghost" style={{ flex:1 }} onClick={()=>setDetailFirma(null)}>Kapat</button>
+              <button className="btn-ghost" style={{ flex:1, color:"#ef4444", borderColor:"#fecaca" }} onClick={()=>setConfirmDelete(detailFirma.id)}>Sil</button>
+              <button className="btn-primary" style={{ flex:2 }} onClick={()=>openEdit(detailFirma)}>✏️ Düzenle</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ADD/EDIT MODAL */}
+      {/* ADD/EDIT */}
       {modal && (
         <div className="overlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div className="bottom-sheet">
@@ -453,42 +602,24 @@ function AjansSayfasi({ userId }) {
                 </select>
               </div>
               <div>
-                <div style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", marginBottom:8 }}>Bu Ay Ödeme Yaptı mı?</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                  {[{val:true,label:"✅ Evet, Ödedi"},{val:false,label:"❌ Hayır"}].map(o => (
-                    <button key={String(o.val)} type="button" onClick={()=>setForm(f=>({...f,odeme_yapti:o.val}))}
-                      style={{ padding:"10px", borderRadius:10, border:`2px solid ${form.odeme_yapti===o.val?"#1a1a1a":"#e8e8e8"}`, background:form.odeme_yapti===o.val?"#1a1a1a":"#fff", color:form.odeme_yapti===o.val?"#fff":"#555", fontWeight:600, fontSize:13, cursor:"pointer" }}>
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
                 <div style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", marginBottom:8 }}>Bölüşüm (₺)</div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-                  {[
-                    { key:"ertuğrul", label:"Ertuğrul" },
-                    { key:"burak",    label:"Burak" },
-                    { key:"onur",     label:"Onur" },
-                  ].map(k => (
+                  {[{key:"ertugrul",label:"Ertuğrul"},{key:"burak",label:"Burak"},{key:"onur",label:"Onur"}].map(k => (
                     <div key={k.key} className="field">
                       <label>{k.label}</label>
                       <input {...inp(k.key)} type="number" placeholder="0" />
                     </div>
                   ))}
                 </div>
-                {/* Toplam kontrol */}
                 <div style={{ fontSize:12, color:"#888", marginTop:6, textAlign:"right" }}>
-                  Toplam: {(Number(form.ertuğrul||0)+Number(form.burak||0)+Number(form.onur||0)).toLocaleString("tr")} ₺
-                  {Number(form.tutar)>0 && Number(form.ertuğrul||0)+Number(form.burak||0)+Number(form.onur||0) !== Number(form.tutar) &&
-                    <span style={{ color:"#ef4444", marginLeft:6 }}>⚠️ Tutar eşleşmiyor</span>
-                  }
+                  Toplam: {(Number(form.ertugrul||0)+Number(form.burak||0)+Number(form.onur||0)).toLocaleString("tr")} ₺
+                  {Number(form.tutar)>0 && Number(form.ertugrul||0)+Number(form.burak||0)+Number(form.onur||0)!==Number(form.tutar) &&
+                    <span style={{ color:"#ef4444", marginLeft:6 }}>⚠️ Eşleşmiyor</span>}
                 </div>
               </div>
-              <div className="field"><label>Not</label><textarea {...inp("notlar")} rows={2} placeholder="Ek notlar…" style={{ resize:"vertical" }} /></div>
+              <div className="field"><label>Not</label><textarea {...inp("notlar")} rows={2} style={{ resize:"vertical" }} /></div>
             </div>
             <div style={{ padding:"10px 16px 24px", borderTop:"1px solid #f0f0f0", display:"flex", gap:8, flexShrink:0 }}>
-              {modal!=="add"&&<button className="btn-ghost" onClick={()=>setConfirmDelete(modal.id)} style={{ color:"#ef4444", borderColor:"#fecaca" }}>Sil</button>}
               <button className="btn-ghost" onClick={()=>setModal(null)}>İptal</button>
               <button className="btn-primary" onClick={saveForm} style={{ flex:1 }}>Kaydet</button>
             </div>
@@ -502,7 +633,7 @@ function AjansSayfasi({ userId }) {
             <div style={{ padding:"32px 24px", textAlign:"center" }}>
               <div style={{ fontSize:40, marginBottom:12 }}>🗑️</div>
               <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>Firmayı silmek istiyor musunuz?</div>
-              <div style={{ fontSize:13, color:"#aaa", marginBottom:24 }}>Bu işlem geri alınamaz.</div>
+              <div style={{ fontSize:13, color:"#aaa", marginBottom:24 }}>Tüm ödeme geçmişi de silinir.</div>
               <div style={{ display:"flex", gap:10 }}>
                 <button className="btn-ghost" style={{ flex:1 }} onClick={()=>setConfirmDelete(null)}>İptal</button>
                 <button className="btn-primary" onClick={()=>deleteFirma(confirmDelete)} style={{ flex:1, background:"#ef4444" }}>Evet, Sil</button>
@@ -511,6 +642,8 @@ function AjansSayfasi({ userId }) {
           </div>
         </div>
       )}
+
+      {odemeModal && <OdemeGecmisiModal firma={odemeModal} userId={userId} onClose={()=>{ setOdemeModal(null); fetchFirmalar(); }} />}
     </div>
   );
 }
@@ -597,14 +730,14 @@ export default function App() {
         .bottom-sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;max-height:88vh;display:flex;flex-direction:column}
         .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center}
         @media(min-width:600px){.overlay{align-items:center}.bottom-sheet{border-radius:16px;max-width:500px;max-height:85vh}}
-        .nav-btn{background:none;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#888;transition:all .15s;white-space:nowrap}
+        .nav-btn{background:none;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#888;white-space:nowrap}
         .nav-btn.active{background:#1a1a1a;color:#fff}
       `}</style>
 
       {/* TOP BAR */}
       <div style={{ background:"#fff", borderBottom:"1px solid #ebebeb", padding:"0 12px", display:"flex", alignItems:"center", height:54, gap:6, position:"sticky", top:0, zIndex:50, overflowX:"auto" }}>
         <div style={{ fontFamily:"'DM Mono',monospace", fontWeight:500, fontSize:16, letterSpacing:"-0.04em", flexShrink:0 }}>crm<span style={{ color:"#6366f1" }}>.</span></div>
-        <div style={{ display:"flex", gap:3, marginLeft:4 }}>
+        <div style={{ display:"flex", gap:3, marginLeft:4, flexShrink:0 }}>
           <button className={`nav-btn${aktifSayfa==="leads"?" active":""}`} onClick={()=>setAktifSayfa("leads")}>Leads</button>
           <button className={`nav-btn${aktifSayfa==="rapor"?" active":""}`} onClick={()=>setAktifSayfa("rapor")}>📊 Rapor</button>
           <button className={`nav-btn${aktifSayfa==="ajans"?" active":""}`} onClick={()=>setAktifSayfa("ajans")}>🏢 Ajans</button>
@@ -691,16 +824,8 @@ export default function App() {
                   </div>
                 </div>
               ))}
-              <div>
-                <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:6 }}>Sınav Tipi</div>
-                <SinavBadge types={currentLead.sinav_tipi} />
-              </div>
-              {currentLead.note && (
-                <div style={{ background:"#fafafa", border:"1px solid #f0f0f0", borderRadius:10, padding:"10px 12px" }}>
-                  <div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>Not</div>
-                  <div style={{ fontSize:13, color:"#555" }}>{currentLead.note}</div>
-                </div>
-              )}
+              <div><div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:6 }}>Sınav Tipi</div><SinavBadge types={currentLead.sinav_tipi} /></div>
+              {currentLead.note && <div style={{ background:"#fafafa", border:"1px solid #f0f0f0", borderRadius:10, padding:"10px 12px" }}><div style={{ fontSize:10, color:"#bbb", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>Not</div><div style={{ fontSize:13, color:"#555" }}>{currentLead.note}</div></div>}
             </div>
             <div style={{ padding:"10px 16px 24px", borderTop:"1px solid #f0f0f0", display:"flex", gap:8, flexShrink:0 }}>
               <button className="btn-ghost" style={{ flex:1 }} onClick={()=>setDetailId(null)}>Kapat</button>
@@ -730,13 +855,7 @@ export default function App() {
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
                   {SINAV_TIPLERI.map(s => {
                     const active = form.sinavTipi.includes(s.key);
-                    return (
-                      <button key={s.key} type="button" className={`sinav-btn${active?" active":""}`} onClick={()=>toggleSinav(s.key)}>
-                        <div style={{ fontWeight:700, fontSize:15 }}>{s.label}</div>
-                        <div style={{ fontSize:9, opacity:.65, marginTop:2 }}>{s.desc}</div>
-                        {active&&<div style={{ fontSize:13, marginTop:3 }}>✓</div>}
-                      </button>
-                    );
+                    return <button key={s.key} type="button" className={`sinav-btn${active?" active":""}`} onClick={()=>toggleSinav(s.key)}><div style={{ fontWeight:700, fontSize:15 }}>{s.label}</div><div style={{ fontSize:9, opacity:.65, marginTop:2 }}>{s.desc}</div>{active&&<div style={{ fontSize:13, marginTop:3 }}>✓</div>}</button>;
                   })}
                 </div>
               </div>
