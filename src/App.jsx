@@ -284,8 +284,25 @@ function AjansSayfasi({userId}) {
 }),[firmalar,odemeDur]);
 ```
 
-Sonra **Ctrl+F** ile şunu aratın:
+
+<div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px",marginBottom:12}}>
+  <div style={{fontWeight:700,fontSize:12,color:"#555",marginBottom:10}}>💸 Bu Ay Kişi Bazlı Kazanç</div>
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+    {[{ad:"Ertuğrul",val:stats.ertugrul,renk:"#6366f1"},{ad:"Burak",val:stats.burak,renk:"#f59e0b"},{ad:"Onur",val:stats.onur,renk:"#10b981"}].map(k=>(
+      <div key={k.ad} style={{textAlign:"center",background:"#f9f9f9",borderRadius:10,padding:"10px 6px"}}>
+        <div style={{fontSize:10,color:"#bbb",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>{k.ad}</div>
+        <div style={{fontSize:15,fontWeight:700,color:k.renk}}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
+      </div>
+    ))}
+  </div>
+</div>
 ```
+
+Ayrıca **Ctrl+F** ile şunu aratın:
+```toplamT:firmalar.reduce((s,f)=>s+(Number(f.tutar)||0),0), tahsil:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.tutar)||0),0),
+  ertugrul:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.ertugrul)||0),0),
+  burak:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.burak)||0),0),
+  onur:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.onur)||0),0),
 <button onClick={openAdd} style={{...S.btnPrimary,width:"100%"
 
   const openAdd=()=>{setForm(EMPTY_FIRMA);setModal("add");};
