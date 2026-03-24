@@ -265,8 +265,28 @@ function AjansSayfasi({userId}) {
   useEffect(()=>{fetchF();},[]);
   const fetchF=async()=>{ setLoading(true); const{data}=await supabase.from("firmalar").select("*").order("created_at",{ascending:false}); setFirmalar(data||[]);
     if(data?.length){const{data:od}=await supabase.from("odeme_gecmisi").select("firma_id,odeme_yapti").eq("ay",buAy()); const m={}; (od||[]).forEach(o=>{m[o.firma_id]=o.odeme_yapti;}); setOdemeDur(m);} setLoading(false); };
+{/* Kişi Bazlı Kazanç */}
+<div style={{background:"#fff",border:"1px solid #ebebeb",borderRadius:12,padding:"14px",marginBottom:12}}>
+  <div style={{fontWeight:700,fontSize:12,color:"#555",marginBottom:10}}>💸 Bu Ay Kişi Bazlı Kazanç</div>
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+    {[{ad:"Ertuğrul",val:stats.ertugrul,renk:"#6366f1"},{ad:"Burak",val:stats.burak,renk:"#f59e0b"},{ad:"Onur",val:stats.onur,renk:"#10b981"}].map(k=>(
+      <div key={k.ad} style={{textAlign:"center",background:"#f9f9f9",borderRadius:10,padding:"10px 6px"}}>
+        <div style={{fontSize:10,color:"#bbb",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>{k.ad}</div>
+        <div style={{fontSize:15,fontWeight:700,color:k.renk}}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
+      </div>
+    ))}
+  </div>
+</div>
+  const stats=useMemo(()=>({ toplamF:firmalar.length, const stats=useMemo(()=>({ toplamF:firmalar.length, odeyenler:Object.values(odemeDur).filter(Boolean).length, toplamT:firmalar.reduce((s,f)=>s+(Number(f.tutar)||0),0), tahsil:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.tutar)||0),0),
+  ertugrul:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.ertugrul)||0),0),
+  burak:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.burak)||0),0),
+  onur:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.onur)||0),0),
+}),[firmalar,odemeDur]);
+```
 
-  const stats=useMemo(()=>({ toplamF:firmalar.length, odeyenler:Object.values(odemeDur).filter(Boolean).length, toplamT:firmalar.reduce((s,f)=>s+(Number(f.tutar)||0),0), tahsil:firmalar.filter(f=>odemeDur[f.id]).reduce((s,f)=>s+(Number(f.tutar)||0),0) }),[firmalar,odemeDur]);
+Sonra **Ctrl+F** ile şunu aratın:
+```
+<button onClick={openAdd} style={{...S.btnPrimary,width:"100%"
 
   const openAdd=()=>{setForm(EMPTY_FIRMA);setModal("add");};
   const openEdit=(f)=>{setForm({firma_adi:f.firma_adi,tutar:f.tutar,odeme_tipi:f.odeme_tipi,ertugrul:f.ertugrul||"",burak:f.burak||"",onur:f.onur||"",notlar:f.notlar||""});setModal(f);setDetailF(null);};
