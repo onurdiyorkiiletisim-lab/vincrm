@@ -1,4 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 const STATUSES = [
   { key: "yeni",       label: "Yeni",             color: "#6366f1", bg: "#eef2ff" },
@@ -25,15 +31,6 @@ const ILLER = [
   "Şırnak","Sivas","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak"
 ];
 
-const SAMPLE_LEADS = [
-  { id: 1, name: "Arda Kılıç",   phone: "0532 111 22 33", il: "İstanbul", ilce: "Kadıköy",  kurum: "Başarı Dershanesi",   sinavTipi: ["TYT","AYT"], ogrenciSayisi: 120, status: "kazanildi",  note: "Sözleşme imzalandı.", date: "2026-02-10" },
-  { id: 2, name: "Selin Yıldız", phone: "0543 222 33 44", il: "Ankara",   ilce: "Çankaya",  kurum: "Gelecek Koleji",      sinavTipi: ["LGS"],       ogrenciSayisi: 85,  status: "teklif",     note: "Teklif gönderildi.", date: "2026-02-18" },
-  { id: 3, name: "Mert Demir",   phone: "0555 333 44 55", il: "İzmir",    ilce: "Bornova",  kurum: "Işık Anadolu Lisesi", sinavTipi: ["TYT"],       ogrenciSayisi: 200, status: "iletisim",   note: "İkinci toplantı ayarlandı.", date: "2026-02-20" },
-  { id: 4, name: "Beyza Şahin",  phone: "0507 444 55 66", il: "Bursa",    ilce: "Nilüfer",  kurum: "Akıl Küpü Okulu",    sinavTipi: ["LGS","TYT"], ogrenciSayisi: 60,  status: "yeni",       note: "", date: "2026-02-22" },
-  { id: 5, name: "Tolga Arslan", phone: "0544 555 66 77", il: "Konya",    ilce: "Selçuklu", kurum: "Meram Dershanesi",    sinavTipi: ["AYT"],       ogrenciSayisi: 150, status: "kaybedildi", note: "Rakip firmayı tercih etti.", date: "2026-01-30" },
-];
-
-let nextId = 6;
 const EMPTY_FORM = { name: "", phone: "", il: "", ilce: "", kurum: "", sinavTipi: [], ogrenciSayisi: "", status: "yeni", note: "" };
 
 const StatusBadge = ({ statusKey }) => {
@@ -57,8 +54,57 @@ const SinavBadge = ({ types }) => (
   </div>
 );
 
+// GİRİŞ EKRANI
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setError("E-posta veya şifre hatalı.");
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f6f6f5", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap');*{box-sizing:border-box;margin:0;padding:0}`}</style>
+      <div style={{ background: "#fff", borderRadius: 16, padding: "40px 32px", width: "100%", maxWidth: 380, boxShadow: "0 4px 32px rgba(0,0,0,.08)" }}>
+        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 500, letterSpacing: "-0.04em", marginBottom: 8 }}>
+          crm<span style={{ color: "#6366f1" }}>.</span>
+        </div>
+        <div style={{ fontSize: 13, color: "#aaa", marginBottom: 28 }}>vintakip.com — Giriş Yap</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#999", letterSpacing: ".07em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>E-posta</label>
+            <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="ornek@mail.com"
+              style={{ width: "100%", border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#999", letterSpacing: ".07em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>Şifre</label>
+            <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="••••••••"
+              onKeyDown={e => e.key === "Enter" && handleLogin()}
+              style={{ width: "100%", border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "10px 13px", fontSize: 14, outline: "none", fontFamily: "inherit" }} />
+          </div>
+          {error && <div style={{ fontSize: 13, color: "#ef4444", background: "#fef2f2", padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
+          <button onClick={handleLogin} disabled={loading}
+            style={{ background: "#1a1a1a", color: "#fff", border: "none", padding: "12px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", marginTop: 4, opacity: loading ? .6 : 1, fontFamily: "inherit" }}>
+            {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ANA CRM
 export default function App() {
-  const [leads, setLeads] = useState(SAMPLE_LEADS);
+  const [session, setSession] = useState(null);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("tümü");
   const [modal, setModal] = useState(null);
@@ -66,9 +112,25 @@ export default function App() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [detailId, setDetailId] = useState(null);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+  }, []);
+
+  useEffect(() => {
+    if (session) fetchLeads();
+  }, [session]);
+
+  const fetchLeads = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+    setLeads(data || []);
+    setLoading(false);
+  };
+
   const filtered = useMemo(() => leads.filter(l => {
     const q = search.toLowerCase();
-    const matchSearch = !q || l.name.toLowerCase().includes(q) || (l.kurum||"").toLowerCase().includes(q) || (l.il||"").toLowerCase().includes(q);
+    const matchSearch = !q || l.name?.toLowerCase().includes(q) || l.kurum?.toLowerCase().includes(q) || l.il?.toLowerCase().includes(q);
     const matchStatus = filterStatus === "tümü" || l.status === filterStatus;
     return matchSearch && matchStatus;
   }), [leads, search, filterStatus]);
@@ -76,27 +138,53 @@ export default function App() {
   const stats = useMemo(() => ({
     total: leads.length,
     kazanildi: leads.filter(l => l.status === "kazanildi").length,
-    topOgrenci: leads.filter(l => l.status === "kazanildi").reduce((s, l) => s + (Number(l.ogrenciSayisi) || 0), 0),
-    pipeline: leads.filter(l => !["kazanildi","kaybedildi"].includes(l.status)).reduce((s, l) => s + (Number(l.ogrenciSayisi) || 0), 0),
+    topOgrenci: leads.filter(l => l.status === "kazanildi").reduce((s, l) => s + (Number(l.ogrenci_sayisi) || 0), 0),
+    pipeline: leads.filter(l => !["kazanildi","kaybedildi"].includes(l.status)).reduce((s, l) => s + (Number(l.ogrenci_sayisi) || 0), 0),
   }), [leads]);
 
   const openAdd = () => { setForm(EMPTY_FORM); setModal("add"); };
-  const openEdit = (lead) => { setForm({ ...lead }); setModal(lead); setDetailId(null); };
+  const openEdit = (lead) => {
+    setForm({
+      name: lead.name || "", phone: lead.phone || "", il: lead.il || "",
+      ilce: lead.ilce || "", kurum: lead.kurum || "",
+      sinavTipi: lead.sinav_tipi || [], ogrenciSayisi: lead.ogrenci_sayisi || "",
+      status: lead.status || "yeni", note: lead.note || ""
+    });
+    setModal(lead); setDetailId(null);
+  };
+
   const toggleSinav = (key) => setForm(f => ({
     ...f, sinavTipi: f.sinavTipi.includes(key) ? f.sinavTipi.filter(x => x !== key) : [...f.sinavTipi, key]
   }));
-  const saveForm = () => {
+
+  const saveForm = async () => {
     if (!form.name.trim()) return;
+    const payload = {
+      name: form.name, phone: form.phone, il: form.il, ilce: form.ilce,
+      kurum: form.kurum, sinav_tipi: form.sinavTipi,
+      ogrenci_sayisi: Number(form.ogrenciSayisi) || 0,
+      status: form.status, note: form.note,
+      user_id: session.user.id
+    };
     if (modal === "add") {
-      setLeads(prev => [...prev, { ...form, id: nextId++, ogrenciSayisi: Number(form.ogrenciSayisi) || 0, date: new Date().toISOString().slice(0, 10) }]);
+      await supabase.from("leads").insert([payload]);
     } else {
-      setLeads(prev => prev.map(l => l.id === modal.id ? { ...l, ...form, ogrenciSayisi: Number(form.ogrenciSayisi) || 0 } : l));
+      await supabase.from("leads").update(payload).eq("id", modal.id);
     }
     setModal(null);
+    fetchLeads();
   };
-  const deleteLead = (id) => { setLeads(prev => prev.filter(l => l.id !== id)); setConfirmDelete(null); setModal(null); setDetailId(null); };
+
+  const deleteLead = async (id) => {
+    await supabase.from("leads").delete().eq("id", id);
+    setConfirmDelete(null); setModal(null); setDetailId(null);
+    fetchLeads();
+  };
+
   const inp = (field) => ({ value: form[field], onChange: e => setForm(f => ({ ...f, [field]: e.target.value })) });
   const currentLead = detailId ? leads.find(l => l.id === detailId) : null;
+
+  if (!session) return <LoginScreen />;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f6f6f5", fontFamily: "'DM Sans','Segoe UI',sans-serif", color: "#1a1a1a" }}>
@@ -104,7 +192,6 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         input,select,textarea,button{font-family:inherit}
-        ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#ddd;border-radius:99px}
         .card-hover{transition:box-shadow .15s,transform .12s;cursor:pointer}
         .card-hover:hover{box-shadow:0 4px 18px rgba(0,0,0,.09);transform:translateY(-1px)}
         .btn-primary{background:#1a1a1a;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s}
@@ -130,6 +217,7 @@ export default function App() {
           crm<span style={{ color: "#6366f1" }}>.</span>
         </div>
         <div style={{ flex: 1 }} />
+        <button className="btn-ghost" onClick={() => supabase.auth.signOut()} style={{ fontSize: 12, padding: "6px 12px" }}>Çıkış</button>
         <button className="btn-primary" onClick={openAdd} style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
           <span style={{ fontSize: 17, lineHeight: 1 }}>+</span> Yeni Lead
         </button>
@@ -169,7 +257,8 @@ export default function App() {
           })}
         </div>
 
-        {filtered.length === 0 && (
+        {loading && <div style={{ textAlign: "center", padding: "48px 20px", color: "#ccc", fontSize: 14 }}>Yükleniyor…</div>}
+        {!loading && filtered.length === 0 && (
           <div style={{ textAlign: "center", padding: "48px 20px", color: "#ccc", fontSize: 14 }}>Kayıt bulunamadı.</div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -184,10 +273,10 @@ export default function App() {
                 <StatusBadge statusKey={lead.status} />
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                <SinavBadge types={lead.sinavTipi} />
+                <SinavBadge types={lead.sinav_tipi} />
                 <div style={{ display: "flex", gap: 10, fontSize: 12, color: "#999" }}>
                   <span>📍 {lead.il}</span>
-                  <span>🎓 {lead.ogrenciSayisi}</span>
+                  <span>🎓 {lead.ogrenci_sayisi}</span>
                 </div>
               </div>
             </div>
@@ -212,8 +301,8 @@ export default function App() {
             <div style={{ padding: "0 20px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
               {[
                 { icon: "📞", label: "Telefon", val: currentLead.phone || "—" },
-                { icon: "📍", label: "Konum",   val: [currentLead.ilce, currentLead.il].filter(Boolean).join(" / ") || "—" },
-                { icon: "🎓", label: "Öğrenci Sayısı", val: `${currentLead.ogrenciSayisi || 0} öğrenci` },
+                { icon: "📍", label: "Konum", val: [currentLead.ilce, currentLead.il].filter(Boolean).join(" / ") || "—" },
+                { icon: "🎓", label: "Öğrenci Sayısı", val: `${currentLead.ogrenci_sayisi || 0} öğrenci` },
               ].map(r => (
                 <div key={r.label} style={{ display: "flex", gap: 12, alignItems: "center" }}>
                   <div style={{ width: 38, height: 38, background: "#f5f5f5", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{r.icon}</div>
@@ -225,7 +314,7 @@ export default function App() {
               ))}
               <div>
                 <div style={{ fontSize: 10, color: "#bbb", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 6 }}>Sınav Tipi</div>
-                <SinavBadge types={currentLead.sinavTipi} />
+                <SinavBadge types={currentLead.sinav_tipi} />
               </div>
               {currentLead.note && (
                 <div style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 10, padding: "12px 14px" }}>
@@ -253,31 +342,15 @@ export default function App() {
               </div>
             </div>
             <div style={{ overflowY: "auto", flex: 1, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-              <div className="field">
-                <label>Ad Soyad *</label>
-                <input {...inp("name")} placeholder="Örn: Ahmet Yılmaz" />
-              </div>
-              <div className="field">
-                <label>Telefon No</label>
-                <input {...inp("phone")} placeholder="05__ ___ __ __" type="tel" />
-              </div>
+              <div className="field"><label>Ad Soyad *</label><input {...inp("name")} placeholder="Örn: Ahmet Yılmaz" /></div>
+              <div className="field"><label>Telefon No</label><input {...inp("phone")} placeholder="05__ ___ __ __" type="tel" /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div className="field">
-                  <label>İl</label>
-                  <select {...inp("il")}>
-                    <option value="">Seçiniz</option>
-                    {ILLER.map(il => <option key={il}>{il}</option>)}
-                  </select>
+                <div className="field"><label>İl</label>
+                  <select {...inp("il")}><option value="">Seçiniz</option>{ILLER.map(il => <option key={il}>{il}</option>)}</select>
                 </div>
-                <div className="field">
-                  <label>İlçe</label>
-                  <input {...inp("ilce")} placeholder="İlçe adı" />
-                </div>
+                <div className="field"><label>İlçe</label><input {...inp("ilce")} placeholder="İlçe adı" /></div>
               </div>
-              <div className="field">
-                <label>Kurum İsmi</label>
-                <input {...inp("kurum")} placeholder="Örn: Gelecek Dershanesi" />
-              </div>
+              <div className="field"><label>Kurum İsmi</label><input {...inp("kurum")} placeholder="Örn: Gelecek Dershanesi" /></div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#999", letterSpacing: ".07em", textTransform: "uppercase", marginBottom: 4 }}>Sınav Tipi</div>
                 <div style={{ fontSize: 11, color: "#ccc", marginBottom: 8 }}>Birden fazla seçilebilir</div>
@@ -294,20 +367,11 @@ export default function App() {
                   })}
                 </div>
               </div>
-              <div className="field">
-                <label>Öğrenci Sayısı</label>
-                <input {...inp("ogrenciSayisi")} type="number" min="0" placeholder="Örn: 150" />
+              <div className="field"><label>Öğrenci Sayısı</label><input {...inp("ogrenciSayisi")} type="number" min="0" placeholder="Örn: 150" /></div>
+              <div className="field"><label>Durum</label>
+                <select {...inp("status")}>{STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select>
               </div>
-              <div className="field">
-                <label>Durum</label>
-                <select {...inp("status")}>
-                  {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-                </select>
-              </div>
-              <div className="field">
-                <label>Not</label>
-                <textarea {...inp("note")} rows={3} placeholder="Ek notlar…" style={{ resize: "vertical" }} />
-              </div>
+              <div className="field"><label>Not</label><textarea {...inp("note")} rows={3} placeholder="Ek notlar…" style={{ resize: "vertical" }} /></div>
             </div>
             <div style={{ padding: "12px 20px 20px", borderTop: "1px solid #f0f0f0", flexShrink: 0, display: "flex", gap: 8 }}>
               {modal !== "add" && (
