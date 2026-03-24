@@ -323,7 +323,37 @@ function FinansSayfasi({userId}) {
         {harcamalar.map(h=>(<div key={h.id} style={{background:"#fff",borderRadius:14,padding:"13px 14px",boxShadow:"0 2px 8px rgba(0,0,0,.05)",border:"1px solid #F3F4F6"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}><div style={{flex:1,minWidth:0,marginRight:8}}><div style={{fontWeight:700,fontSize:14,color:DARK,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.aciklama}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{new Date(h.tarih).toLocaleDateString("tr-TR")} {h.kart&&`· ${h.kart}`}</div></div><div style={{textAlign:"right",flexShrink:0}}><div style={{fontWeight:800,fontSize:15,color:"#DC2626"}}>-{Number(h.tutar).toLocaleString("tr")} ₺</div><KategoriTag kat={h.kategori}/></div></div><div style={{display:"flex",gap:6,justifyContent:"flex-end",marginTop:6}}><button onClick={()=>{setForm({tarih:h.tarih,aciklama:h.aciklama,tutar:h.tutar,kategori:h.kategori,kart:h.kart||""});setModal(h);}} style={{...S.btnGhost,padding:"5px 12px",fontSize:11}}>Düzenle</button><button onClick={()=>setConfirmDel(h.id)} style={{...S.btnGhost,padding:"5px 12px",fontSize:11,color:"#DC2626",borderColor:"#FECACA"}}>Sil</button></div></div>))}
       </div>)}
       {aktifTab==="gelirler"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
-        <button onClick={async()=>{ const{data:f1}=await supabase.from("firmalar").select("*"); const{data:f2}=await supabase.from("firmalar2").select("*"); const allFirmalar=[...(f1||[]),...(f2||[])]; const{data:od1}=await supabase.from("odeme_gecmisi").select("firma_id,odeme_yapti,tutar").eq("ay",filtrAy); const{data:od2}=await supabase.from("odeme_gecmisi2").select("firma_id,odeme_yapti,tutar").eq("ay",filtrAy); const allOd=[...(od1||[]),...(od2||[])]; const odeyen=new Set(allOd.filter(o=>o.odeme_yapti).map(o=>o.firma_id)); const payload=allFirmalar.filter(f=>odeyen.has(f.id)).map(f=>({tarih:new Date().toISOString().slice(0,10),aciklama:f.firma_adi+" - Aylık Ödeme",tutar:Number(f.tutar),kategori:"Ajans Geliri",ay:filtrAy,user_id:userId})); if(payload.length){await supabase.from("gelirler").insert(payload);fetchAll();} }} style={{...S.btnGhost,width:"100%",fontSize:13}}>🔄 Tüm Ajans Gelirlerini Aktar</button>
+        <button onClick={async()=>{
+  // Önce bu ayın mevcut ajans gelirlerini sil (mükerrer önleme)
+  await supabase.from("gelirler").delete().eq("ay",filtrAy).eq("kategori","Ajans Geliri").eq("user_id",userId);
+  // Ajans 1 - Onur payı
+  const{data:f1}=await supabase.from("firmalar").select("*");
+  const{data:od1}=await supabase.from("odeme_gecmisi").select("firma_id,odeme_yapti").eq("ay",filtrAy);
+  const odeyen1=new Set((od1||[]).filter(o=>o.odeme_yapti).map(o=>o.firma_id));
+  const payload1=(f1||[]).filter(f=>odeyen1.has(f.id)&&Number(f.onur)>0).map(f=>({
+    tarih:new Date().toISOString().slice(0,10),
+    aciklama:`${f.firma_adi} — Ajans 1 Onur Payı`,
+    tutar:Number(f.onur),
+    kategori:"Ajans Geliri",
+    ay:filtrAy,
+    user_id:userId
+  }));
+  // Ajans 2 - Onur payı
+  const{data:f2}=await supabase.from("firmalar2").select("*");
+  const{data:od2}=await supabase.from("odeme_gecmisi2").select("firma_id,odeme_yapti").eq("ay",filtrAy);
+  const odeyen2=new Set((od2||[]).filter(o=>o.odeme_yapti).map(o=>o.firma_id));
+  const payload2=(f2||[]).filter(f=>odeyen2.has(f.id)&&Number(f.onur)>0).map(f=>({
+    tarih:new Date().toISOString().slice(0,10),
+    aciklama:`${f.firma_adi} — Ajans 2 Onur Payı`,
+    tutar:Number(f.onur),
+    kategori:"Ajans Geliri",
+    ay:filtrAy,
+    user_id:userId
+  }));
+  const payload=[...payload1,...payload2];
+  if(payload.length){await supabase.from("gelirler").insert(payload);fetchAll();}
+  else{alert("Bu ay ödeme yapan firmada Onur payı bulunamadı.");}
+}} style={{...S.btnGhost,width:"100%",fontSize:13}}>🔄 Onur Paylarını Aktar</button> const{data:f2}=await supabase.from("firmalar2").select("*"); const allFirmalar=[...(f1||[]),...(f2||[])]; const{data:od1}=await supabase.from("odeme_gecmisi").select("firma_id,odeme_yapti,tutar").eq("ay",filtrAy); const{data:od2}=await supabase.from("odeme_gecmisi2").select("firma_id,odeme_yapti,tutar").eq("ay",filtrAy); const allOd=[...(od1||[]),...(od2||[])]; const odeyen=new Set(allOd.filter(o=>o.odeme_yapti).map(o=>o.firma_id)); const payload=allFirmalar.filter(f=>odeyen.has(f.id)).map(f=>({tarih:new Date().toISOString().slice(0,10),aciklama:f.firma_adi+" - Aylık Ödeme",tutar:Number(f.tutar),kategori:"Ajans Geliri",ay:filtrAy,user_id:userId})); if(payload.length){await supabase.from("gelirler").insert(payload);fetchAll();} }} style={{...S.btnGhost,width:"100%",fontSize:13}}>🔄 Tüm Ajans Gelirlerini Aktar</button>
         {loading&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Yükleniyor…</div>}
         {!loading&&gelirler.length===0&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Bu ay gelir kaydı yok.</div>}
         {gelirler.map(g=>(<div key={g.id} style={{background:"#fff",borderRadius:14,padding:"13px 14px",boxShadow:"0 2px 8px rgba(0,0,0,.05)",border:"1px solid #F3F4F6"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontWeight:700,fontSize:14,color:DARK}}>{g.aciklama}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{new Date(g.tarih).toLocaleDateString("tr-TR")}</div></div><div style={{fontWeight:800,fontSize:16,color:"#059669"}}>+{Number(g.tutar).toLocaleString("tr")} ₺</div></div></div>))}
