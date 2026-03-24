@@ -28,67 +28,39 @@ const ANAHTAR_KELIMELER = {
   "Personel":           ["maaş","personel","sgk","vergi"],
 };
 
-const otomatikKategori = (aciklama) => {
-  const a = aciklama.toLowerCase();
-  for (const [kat, kelimeler] of Object.entries(ANAHTAR_KELIMELER)) {
-    if (kelimeler.some(k => a.includes(k))) return kat;
-  }
-  return "Diğer";
+const otomatikKategori=(aciklama)=>{ const a=aciklama.toLowerCase(); for(const[kat,kelimeler]of Object.entries(ANAHTAR_KELIMELER)){if(kelimeler.some(k=>a.includes(k)))return kat;} return "Diğer"; };
+const buAy=()=>{ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
+const ayLabel=(ay)=>{ const[y,m]=ay.split("-"); return `${["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"][+m-1]} ${y}`; };
+
+const STATUSES=[{key:"yeni",label:"Yeni",color:"#7C3AED",bg:"#EDE9FE"},{key:"iletisim",label:"İletişimde",color:"#D97706",bg:"#FEF3C7"},{key:"teklif",label:"Teklif Gönderildi",color:"#2563EB",bg:"#DBEAFE"},{key:"kazanildi",label:"Kazanıldı",color:"#059669",bg:"#D1FAE5"},{key:"kaybedildi",label:"Kaybedildi",color:"#DC2626",bg:"#FEE2E2"}];
+const SINAV_TIPLERI=[{key:"TYT",label:"TYT",desc:"Temel Yeterlilik"},{key:"AYT",label:"AYT",desc:"Alan Yeterlilik"},{key:"LGS",label:"LGS",desc:"Liseye Geçiş"}];
+const ILLER=["Adana","Adıyaman","Afyonkarahisar","Ağrı","Aksaray","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın","Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Iğdır","Isparta","İstanbul","İzmir","Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kilis","Kırıkkale","Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir","Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Şanlıurfa","Siirt","Sinop","Şırnak","Sivas","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak"];
+
+const EMPTY_FORM={name:"",phone:"",il:"",ilce:"",kurum:"",sinavTipi:[],ogrenciSayisi:"",status:"yeni",note:""};
+const EMPTY_FIRMA={firma_adi:"",tutar:"",odeme_tipi:"faturali",ertugrul:"",burak:"",onur:"",notlar:""};
+const EMPTY_HARCAMA={tarih:new Date().toISOString().slice(0,10),aciklama:"",tutar:"",kategori:"Diğer",kart:""};
+
+const S={
+  overlay:{position:"fixed",inset:0,background:"rgba(26,26,46,.6)",backdropFilter:"blur(8px)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"},
+  sheet:{background:"#fff",width:"100%",maxWidth:520,borderRadius:"24px 24px 0 0",maxHeight:"88vh",display:"flex",flexDirection:"column",boxShadow:"0 -8px 40px rgba(0,0,0,.15)"},
+  closeBtn:{width:40,height:40,borderRadius:"50%",background:"#F3F4F6",border:"none",fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#6B7280",flexShrink:0},
+  field:{display:"flex",flexDirection:"column",gap:6},
+  label:{fontSize:11,fontWeight:700,color:"#9CA3AF",letterSpacing:".08em",textTransform:"uppercase"},
+  input:{border:"2px solid #F3F4F6",borderRadius:12,padding:"11px 14px",fontSize:14,outline:"none",background:"#FAFAFA",color:"#1A1A2E",fontFamily:"inherit",width:"100%"},
+  btnPrimary:{background:`linear-gradient(135deg,${ACCENT},${ACCENT2})`,color:"#fff",border:"none",padding:"13px 20px",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:`0 4px 15px rgba(255,107,53,.35)`},
+  btnGhost:{background:"transparent",border:"2px solid #E5E7EB",padding:"11px 16px",borderRadius:12,fontSize:13,fontWeight:600,cursor:"pointer",color:"#6B7280",fontFamily:"inherit"},
 };
 
-const buAy = () => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
-const ayLabel = (ay) => { const [y,m]=ay.split("-"); return `${["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"][+m-1]} ${y}`; };
+const StatusBadge=({statusKey})=>{ const s=STATUSES.find(x=>x.key===statusKey)||STATUSES[0]; return <span style={{display:"inline-block",padding:"4px 10px",borderRadius:99,fontSize:11,fontWeight:700,color:s.color,background:s.bg,whiteSpace:"nowrap"}}>{s.label}</span>; };
+const SinavBadge=({types})=>(<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(types||[]).map(t=><span key={t} style={{padding:"3px 9px",borderRadius:8,fontSize:11,fontWeight:700,background:t==="TYT"?"#FEF3C7":t==="AYT"?"#EDE9FE":"#D1FAE5",color:t==="TYT"?"#92400E":t==="AYT"?"#5B21B6":"#065F46"}}>{t}</span>)}</div>);
+const KategoriTag=({kat})=>{ const k=KATEGORILER.find(x=>x.key===kat)||KATEGORILER[KATEGORILER.length-1]; return <span style={{display:"inline-block",padding:"3px 9px",borderRadius:8,fontSize:11,fontWeight:700,color:k.color,background:k.bg,whiteSpace:"nowrap"}}>{k.label}</span>; };
 
-const STATUSES = [
-  { key:"yeni",       label:"Yeni",             color:"#7C3AED", bg:"#EDE9FE" },
-  { key:"iletisim",   label:"İletişimde",        color:"#D97706", bg:"#FEF3C7" },
-  { key:"teklif",     label:"Teklif Gönderildi", color:"#2563EB", bg:"#DBEAFE" },
-  { key:"kazanildi",  label:"Kazanıldı",         color:"#059669", bg:"#D1FAE5" },
-  { key:"kaybedildi", label:"Kaybedildi",        color:"#DC2626", bg:"#FEE2E2" },
-];
-const SINAV_TIPLERI = [
-  { key:"TYT", label:"TYT", desc:"Temel Yeterlilik" },
-  { key:"AYT", label:"AYT", desc:"Alan Yeterlilik" },
-  { key:"LGS", label:"LGS", desc:"Liseye Geçiş" },
-];
-const ILLER = ["Adana","Adıyaman","Afyonkarahisar","Ağrı","Aksaray","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın","Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Iğdır","Isparta","İstanbul","İzmir","Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kilis","Kırıkkale","Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir","Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Şanlıurfa","Siirt","Sinop","Şırnak","Sivas","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak"];
-
-const EMPTY_FORM = { name:"",phone:"",il:"",ilce:"",kurum:"",sinavTipi:[],ogrenciSayisi:"",status:"yeni",note:"" };
-const EMPTY_FIRMA = { firma_adi:"",tutar:"",odeme_tipi:"faturali",ertugrul:"",burak:"",onur:"",notlar:"" };
-const EMPTY_HARCAMA = { tarih:new Date().toISOString().slice(0,10),aciklama:"",tutar:"",kategori:"Diğer",kart:"" };
-
-const S = {
-  overlay: { position:"fixed",inset:0,background:"rgba(26,26,46,.6)",backdropFilter:"blur(8px)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center" },
-  sheet: { background:"#fff",width:"100%",maxWidth:520,borderRadius:"24px 24px 0 0",maxHeight:"88vh",display:"flex",flexDirection:"column",boxShadow:"0 -8px 40px rgba(0,0,0,.15)" },
-  closeBtn: { width:40,height:40,borderRadius:"50%",background:"#F3F4F6",border:"none",fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#6B7280",flexShrink:0 },
-  field: { display:"flex",flexDirection:"column",gap:6 },
-  label: { fontSize:11,fontWeight:700,color:"#9CA3AF",letterSpacing:".08em",textTransform:"uppercase" },
-  input: { border:"2px solid #F3F4F6",borderRadius:12,padding:"11px 14px",fontSize:14,outline:"none",background:"#FAFAFA",color:"#1A1A2E",fontFamily:"inherit",width:"100%" },
-  btnPrimary: { background:`linear-gradient(135deg,${ACCENT},${ACCENT2})`,color:"#fff",border:"none",padding:"13px 20px",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:`0 4px 15px rgba(255,107,53,.35)` },
-  btnGhost: { background:"transparent",border:"2px solid #E5E7EB",padding:"11px 16px",borderRadius:12,fontSize:13,fontWeight:600,cursor:"pointer",color:"#6B7280",fontFamily:"inherit" },
-};
-
-const StatusBadge = ({statusKey}) => {
-  const s = STATUSES.find(x=>x.key===statusKey)||STATUSES[0];
-  return <span style={{display:"inline-block",padding:"4px 10px",borderRadius:99,fontSize:11,fontWeight:700,color:s.color,background:s.bg,whiteSpace:"nowrap"}}>{s.label}</span>;
-};
-const SinavBadge = ({types}) => (
-  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-    {(types||[]).map(t=><span key={t} style={{padding:"3px 9px",borderRadius:8,fontSize:11,fontWeight:700,background:t==="TYT"?"#FEF3C7":t==="AYT"?"#EDE9FE":"#D1FAE5",color:t==="TYT"?"#92400E":t==="AYT"?"#5B21B6":"#065F46"}}>{t}</span>)}
-  </div>
-);
-const KategoriTag = ({kat}) => {
-  const k = KATEGORILER.find(x=>x.key===kat)||KATEGORILER[KATEGORILER.length-1];
-  return <span style={{display:"inline-block",padding:"3px 9px",borderRadius:8,fontSize:11,fontWeight:700,color:k.color,background:k.bg,whiteSpace:"nowrap"}}>{k.label}</span>;
-};
-
-// ── LOGIN ──────────────────────────────────────────────────────────────────
 function LoginScreen() {
   const [email,setEmail]=useState(""); const [password,setPassword]=useState(""); const [error,setError]=useState(""); const [loading,setLoading]=useState(false);
   const handleLogin=async()=>{ setLoading(true);setError(""); const{error}=await supabase.auth.signInWithPassword({email,password}); if(error)setError("E-posta veya şifre hatalı."); setLoading(false); };
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#1A1A2E 0%,#16213E 50%,#0F3460 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"'DM Sans','Segoe UI',sans-serif",position:"relative",overflow:"hidden"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@500&display=swap');*{box-sizing:border-box;margin:0;padding:0}.li:focus{border-color:${ACCENT}!important;box-shadow:0 0 0 4px rgba(255,107,53,.1)}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@500&display=swap');*{box-sizing:border-box;margin:0;padding:0}`}</style>
       <div style={{position:"absolute",top:-100,right:-100,width:400,height:400,borderRadius:"50%",background:"rgba(255,107,53,.08)",pointerEvents:"none"}}/>
       <div style={{position:"absolute",bottom:-150,left:-100,width:500,height:500,borderRadius:"50%",background:"rgba(255,140,90,.06)",pointerEvents:"none"}}/>
       <div style={{background:"rgba(255,255,255,.05)",backdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,.1)",borderRadius:24,padding:"40px 32px",width:"100%",maxWidth:380,position:"relative",zIndex:1}}>
@@ -98,8 +70,8 @@ function LoginScreen() {
           <div style={{fontSize:13,color:"rgba(255,255,255,.5)",marginTop:4}}>Şirket Yönetim Paneli</div>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          <div style={S.field}><label style={{...S.label,color:"rgba(255,255,255,.5)"}}>E-posta</label><input className="li" value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ornek@mail.com" style={{...S.input,background:"rgba(255,255,255,.08)",border:"2px solid rgba(255,255,255,.1)",color:"#fff"}}/></div>
-          <div style={S.field}><label style={{...S.label,color:"rgba(255,255,255,.5)"}}>Şifre</label><input className="li" value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{...S.input,background:"rgba(255,255,255,.08)",border:"2px solid rgba(255,255,255,.1)",color:"#fff"}}/></div>
+          <div style={S.field}><label style={{...S.label,color:"rgba(255,255,255,.5)"}}>E-posta</label><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ornek@mail.com" style={{...S.input,background:"rgba(255,255,255,.08)",border:"2px solid rgba(255,255,255,.1)",color:"#fff"}}/></div>
+          <div style={S.field}><label style={{...S.label,color:"rgba(255,255,255,.5)"}}>Şifre</label><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{...S.input,background:"rgba(255,255,255,.08)",border:"2px solid rgba(255,255,255,.1)",color:"#fff"}}/></div>
           {error&&<div style={{fontSize:13,color:"#FCA5A5",background:"rgba(220,38,38,.15)",padding:"10px 14px",borderRadius:10}}>{error}</div>}
           <button onClick={handleLogin} disabled={loading} style={{...S.btnPrimary,marginTop:8,opacity:loading?.7:1,fontSize:15,padding:"14px"}}>{loading?"Giriş yapılıyor...":"Giriş Yap →"}</button>
         </div>
@@ -108,12 +80,21 @@ function LoginScreen() {
   );
 }
 
-// ── BULK IMPORT ────────────────────────────────────────────────────────────
 function BulkImportModal({onClose,onImport,userId}) {
   const [rows,setRows]=useState([]); const [error,setError]=useState(""); const [loading,setLoading]=useState(false); const [done,setDone]=useState(false);
-  const handleFile=(file)=>{ setError("");setRows([]); const r=new FileReader(); r.onload=(e)=>{ try{ const d=new Uint8Array(e.target.result); const wb=XLSX.read(d,{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]]; const j=XLSX.utils.sheet_to_json(ws,{defval:""}); if(!j.length){setError("Dosya boş.");return;} setRows(j); }catch{setError("Dosya okunamadı."); } }; r.readAsArrayBuffer(file); };
+  const handleFile=(file)=>{ setError("");setRows([]); const r=new FileReader(); r.onload=(e)=>{ try{ const d=new Uint8Array(e.target.result); const wb=XLSX.read(d,{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]]; const j=XLSX.utils.sheet_to_json(ws,{defval:""}); if(!j.length){setError("Dosya boş.");return;} setRows(j); }catch{setError("Dosya okunamadı.");} }; r.readAsArrayBuffer(file); };
   const downloadTemplate=()=>{ const ws=XLSX.utils.aoa_to_sheet([["Ad Soyad","Telefon","Kurum"]]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Leads"); XLSX.writeFile(wb,"sablon.xlsx"); };
-  const handleImport=async()=>{ if(!rows.length)return; setLoading(true); const p=rows.map(r=>({name:r["Ad Soyad"]||r["ad soyad"]||r["AD SOYAD"]||r["name"]||r["Name"]||r["full_name"]||r["first_name"]||"",phone:String(r["Telefon"]||r["telefon"]||r["TELEFON"]||r["phone"]||r["Phone Number"]||r["phone_number"]||"").replace(/[^0-9+]/g,"").trim(),kurum:r["Kurum"]||r["kurum"]||r["KURUM"]||r["school"]||"",phone:String(r["Telefon"]||r["phone"]||r["Phone Number"]||""),kurum:r["Kurum"]||r["kurum"]||"",status:"yeni",sinav_tipi:[],ogrenci_sayisi:0,user_id:userId})).filter(r=>r.name||r.phone); const{error}=await supabase.from("leads").insert(p); if(error)setError("Hata: "+error.message); else{setDone(true);onImport();} setLoading(false); };
+  const handleImport=async()=>{ if(!rows.length)return; setLoading(true);
+    const p=rows.map(r=>({
+      name:r["Ad Soyad"]||r["ad soyad"]||r["AD SOYAD"]||r["name"]||r["Name"]||r["full_name"]||"",
+      phone:String(r["Telefon"]||r["telefon"]||r["TELEFON"]||r["phone"]||r["Phone Number"]||r["phone_number"]||"").replace(/\s/g,""),
+      kurum:r["Kurum"]||r["kurum"]||r["KURUM"]||r["school"]||"",
+      status:"yeni",sinav_tipi:[],ogrenci_sayisi:0,user_id:userId
+    })).filter(r=>r.name||r.phone);
+    const{error}=await supabase.from("leads").insert(p);
+    if(error)setError("Hata: "+error.message); else{setDone(true);onImport();}
+    setLoading(false);
+  };
   return (
     <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={S.sheet}>
@@ -125,7 +106,7 @@ function BulkImportModal({onClose,onImport,userId}) {
           {done?(<div style={{textAlign:"center",padding:"32px 0"}}><div style={{fontSize:56,marginBottom:12}}>🎉</div><div style={{fontWeight:800,fontSize:18,color:DARK}}>{rows.length} kayıt yüklendi!</div></div>):(
             <>
               <div style={{background:"linear-gradient(135deg,#EFF6FF,#DBEAFE)",border:"1px solid #BFDBFE",borderRadius:14,padding:"14px 16px"}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#1D4ED8",marginBottom:8}}>📋 Önce şablonu indirin</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#1D4ED8",marginBottom:8}}>📋 Şablon indirin</div>
                 <button onClick={downloadTemplate} style={{background:"#2563EB",color:"#fff",border:"none",padding:"8px 16px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>⬇️ Şablon İndir</button>
               </div>
               <div onClick={()=>document.getElementById("fileInput").click()} style={{border:"2px dashed #E5E7EB",borderRadius:16,padding:"28px 20px",textAlign:"center",cursor:"pointer",background:"#FAFAFA"}}>
@@ -148,7 +129,6 @@ function BulkImportModal({onClose,onImport,userId}) {
   );
 }
 
-// ── RAPOR ──────────────────────────────────────────────────────────────────
 function RaporSayfasi({leads}) {
   const sd=STATUSES.map(s=>({...s,sayi:leads.filter(l=>l.status===s.key).length,oran:leads.length?Math.round(leads.filter(l=>l.status===s.key).length/leads.length*100):0}));
   const sinav=SINAV_TIPLERI.map(s=>({...s,sayi:leads.filter(l=>(l.sinav_tipi||[]).includes(s.key)).length}));
@@ -171,7 +151,7 @@ function RaporSayfasi({leads}) {
       </div>
       <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
         <div style={{fontWeight:800,fontSize:14,marginBottom:14,color:DARK}}>📊 Durum Dağılımı</div>
-        {sd.map(s=>(<div key={s.key} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:13,fontWeight:600,color:DARK}}>{s.label}</span><span style={{fontSize:12,color:"#9CA3AF",fontWeight:600}}>{s.sayi} · %{s.oran}</span></div><div style={{height:8,background:"#F3F4F6",borderRadius:99}}><div style={{height:"100%",width:`${s.oran}%`,background:s.color,borderRadius:99,transition:"width .5s"}}/></div></div>))}
+        {sd.map(s=>(<div key={s.key} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:13,fontWeight:600,color:DARK}}>{s.label}</span><span style={{fontSize:12,color:"#9CA3AF",fontWeight:600}}>{s.sayi} · %{s.oran}</span></div><div style={{height:8,background:"#F3F4F6",borderRadius:99}}><div style={{height:"100%",width:`${s.oran}%`,background:s.color,borderRadius:99}}/></div></div>))}
       </div>
       {ayMap.length>0&&(<div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}><div style={{fontWeight:800,fontSize:14,marginBottom:14,color:DARK}}>📈 Aylık Lead</div><div style={{display:"flex",alignItems:"flex-end",gap:6,height:90}}>{ayMap.map(([ay,sayi])=>(<div key={ay} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><div style={{fontSize:10,fontWeight:700,color:ACCENT}}>{sayi}</div><div style={{width:"100%",background:`linear-gradient(180deg,${ACCENT},${ACCENT2})`,borderRadius:"6px 6px 0 0",height:`${(sayi/maxAy)*72}px`,minHeight:4}}/><div style={{fontSize:8,color:"#9CA3AF"}}>{ay.slice(5)}/{ay.slice(2,4)}</div></div>))}</div></div>)}
       <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}><div style={{fontWeight:800,fontSize:14,marginBottom:14,color:DARK}}>🎓 Sınav Tipi</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>{sinav.map((s,i)=>(<div key={s.key} style={{textAlign:"center",background:["linear-gradient(135deg,#FEF3C7,#FDE68A)","linear-gradient(135deg,#EDE9FE,#DDD6FE)","linear-gradient(135deg,#D1FAE5,#A7F3D0)"][i],borderRadius:14,padding:"14px 8px"}}><div style={{fontSize:22,fontWeight:800,color:["#92400E","#5B21B6","#065F46"][i]}}>{s.sayi}</div><div style={{fontSize:12,fontWeight:800,marginTop:2,color:["#92400E","#5B21B6","#065F46"][i]}}>{s.label}</div></div>))}</div></div>
@@ -180,7 +160,6 @@ function RaporSayfasi({leads}) {
   );
 }
 
-// ── ÖDEME MODALİ ──────────────────────────────────────────────────────────
 function OdemeModal({firma,userId,onClose}) {
   const [odemeler,setOdemeler]=useState([]); const [loading,setLoading]=useState(true);
   const [yeni,setYeni]=useState({tutar:firma.tutar||"",tarih:new Date().toISOString().slice(0,10),odeme_yapti:true});
@@ -231,7 +210,6 @@ function OdemeModal({firma,userId,onClose}) {
   );
 }
 
-// ── AJANS ──────────────────────────────────────────────────────────────────
 function AjansSayfasi({userId}) {
   const [firmalar,setFirmalar]=useState([]); const [loading,setLoading]=useState(true);
   const [modal,setModal]=useState(null); const [form,setForm]=useState(EMPTY_FIRMA);
@@ -248,23 +226,12 @@ function AjansSayfasi({userId}) {
   return (
     <div style={{padding:"12px",maxWidth:640,margin:"0 auto",paddingBottom:90}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        {[{icon:"🏢",label:"Toplam Firma",value:stats.toplamF,grad:"linear-gradient(135deg,#667EEA,#764BA2)"},{icon:"✅",label:"Bu Ay Ödedi",value:`${stats.odeyenler}/${stats.toplamF}`,grad:"linear-gradient(135deg,#11998E,#38EF7D)"},{icon:"💰",label:"Toplam Tutar",value:stats.toplamT.toLocaleString("tr")+"₺",grad:`linear-gradient(135deg,${ACCENT},${ACCENT2})`},{icon:"🏦",label:"Tahsil Edilen",value:stats.tahsil.toLocaleString("tr")+"₺",grad:"linear-gradient(135deg,#4776E6,#8E54E9)"}].map(s=>(
-          <div key={s.label} style={{borderRadius:16,padding:"14px",background:s.grad,color:"#fff",boxShadow:"0 4px 15px rgba(0,0,0,.1)"}}>
-            <div style={{fontSize:20,marginBottom:6}}>{s.icon}</div>
-            <div style={{fontSize:17,fontWeight:800,letterSpacing:"-0.02em"}}>{s.value}</div>
-            <div style={{fontSize:10,marginTop:3,opacity:.8,fontWeight:600}}>{s.label}</div>
-          </div>
-        ))}
+        {[{icon:"🏢",label:"Toplam Firma",value:stats.toplamF,grad:"linear-gradient(135deg,#667EEA,#764BA2)"},{icon:"✅",label:"Bu Ay Ödedi",value:`${stats.odeyenler}/${stats.toplamF}`,grad:"linear-gradient(135deg,#11998E,#38EF7D)"},{icon:"💰",label:"Toplam Tutar",value:stats.toplamT.toLocaleString("tr")+"₺",grad:`linear-gradient(135deg,${ACCENT},${ACCENT2})`},{icon:"🏦",label:"Tahsil Edilen",value:stats.tahsil.toLocaleString("tr")+"₺",grad:"linear-gradient(135deg,#4776E6,#8E54E9)"}].map(s=>(<div key={s.label} style={{borderRadius:16,padding:"14px",background:s.grad,color:"#fff",boxShadow:"0 4px 15px rgba(0,0,0,.1)"}}><div style={{fontSize:20,marginBottom:6}}>{s.icon}</div><div style={{fontSize:17,fontWeight:800,letterSpacing:"-0.02em"}}>{s.value}</div><div style={{fontSize:10,marginTop:3,opacity:.8,fontWeight:600}}>{s.label}</div></div>))}
       </div>
       <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
         <div style={{fontWeight:800,fontSize:13,color:DARK,marginBottom:12}}>💸 Bu Ay Kişi Bazlı Kazanç</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-          {[{ad:"Ertuğrul",val:stats.ertugrul,grad:"linear-gradient(135deg,#667EEA,#764BA2)"},{ad:"Burak",val:stats.burak,grad:`linear-gradient(135deg,${ACCENT},${ACCENT2})`},{ad:"Onur",val:stats.onur,grad:"linear-gradient(135deg,#11998E,#38EF7D)"}].map(k=>(
-            <div key={k.ad} style={{textAlign:"center",background:k.grad,borderRadius:12,padding:"12px 6px",color:"#fff",boxShadow:"0 4px 12px rgba(0,0,0,.1)"}}>
-              <div style={{fontSize:10,fontWeight:700,opacity:.8,textTransform:"uppercase",marginBottom:4}}>{k.ad}</div>
-              <div style={{fontSize:14,fontWeight:800}}>{Number(k.val||0).toLocaleString("tr")} ₺</div>
-            </div>
-          ))}
+          {[{ad:"Ertuğrul",val:stats.ertugrul,grad:"linear-gradient(135deg,#667EEA,#764BA2)"},{ad:"Burak",val:stats.burak,grad:`linear-gradient(135deg,${ACCENT},${ACCENT2})`},{ad:"Onur",val:stats.onur,grad:"linear-gradient(135deg,#11998E,#38EF7D)"}].map(k=>(<div key={k.ad} style={{textAlign:"center",background:k.grad,borderRadius:12,padding:"12px 6px",color:"#fff",boxShadow:"0 4px 12px rgba(0,0,0,.1)"}}><div style={{fontSize:10,fontWeight:700,opacity:.8,textTransform:"uppercase",marginBottom:4}}>{k.ad}</div><div style={{fontSize:14,fontWeight:800}}>{Number(k.val||0).toLocaleString("tr")} ₺</div></div>))}
         </div>
       </div>
       <button onClick={openAdd} style={{...S.btnPrimary,width:"100%",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontSize:15}}><span style={{fontSize:18}}>+</span> Yeni Firma Ekle</button>
@@ -274,10 +241,7 @@ function AjansSayfasi({userId}) {
         {firmalar.map(f=>{const odedi=odemeDur[f.id]; return(
           <div key={f.id} style={{background:"#fff",borderRadius:16,padding:"14px",boxShadow:"0 2px 12px rgba(0,0,0,.06)",border:"1px solid #F3F4F6"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-              <div style={{flex:1,cursor:"pointer"}} onClick={()=>setDetailF(f)}>
-                <div style={{fontWeight:800,fontSize:15,color:DARK}}>{f.firma_adi}</div>
-                <div style={{fontSize:12,color:"#9CA3AF",marginTop:2}}>{Number(f.tutar).toLocaleString("tr")} ₺ · <span style={{color:f.odeme_tipi==="faturali"?"#2563EB":"#059669",fontWeight:700}}>{f.odeme_tipi==="faturali"?"🧾 Faturalı":"💵 Nakit"}</span></div>
-              </div>
+              <div style={{flex:1,cursor:"pointer"}} onClick={()=>setDetailF(f)}><div style={{fontWeight:800,fontSize:15,color:DARK}}>{f.firma_adi}</div><div style={{fontSize:12,color:"#9CA3AF",marginTop:2}}>{Number(f.tutar).toLocaleString("tr")} ₺ · <span style={{color:f.odeme_tipi==="faturali"?"#2563EB":"#059669",fontWeight:700}}>{f.odeme_tipi==="faturali"?"🧾 Faturalı":"💵 Nakit"}</span></div></div>
               <button onClick={()=>setOdemeModal(f)} style={{padding:"6px 12px",borderRadius:99,border:"none",fontWeight:700,fontSize:11,cursor:"pointer",background:odedi?"#D1FAE5":"#FEE2E2",color:odedi?"#059669":"#DC2626",flexShrink:0,fontFamily:"inherit"}}>{odedi?"✅ Ödedi":"❌ Ödemedi"}</button>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
@@ -288,259 +252,95 @@ function AjansSayfasi({userId}) {
         );})}
       </div>
       {detailF&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDetailF(null)}><div style={S.sheet}><div style={{padding:"16px 20px",borderBottom:"1px solid #F3F4F6",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}><div style={{fontWeight:800,fontSize:16,color:DARK}}>{detailF.firma_adi}</div><button onClick={()=>setDetailF(null)} style={S.closeBtn}>×</button></div><div style={{overflowY:"auto",flex:1,padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>{[{icon:"💰",label:"Aylık Tutar",val:Number(detailF.tutar).toLocaleString("tr")+" ₺"},{icon:"🧾",label:"Ödeme Tipi",val:detailF.odeme_tipi==="faturali"?"Faturalı":"Nakit"}].map(r=>(<div key={r.label} style={{display:"flex",gap:14,alignItems:"center",background:"#F9FAFB",borderRadius:14,padding:"12px 14px"}}><div style={{width:42,height:42,background:`linear-gradient(135deg,${ACCENT},${ACCENT2})`,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{r.icon}</div><div><div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase"}}>{r.label}</div><div style={{fontSize:15,fontWeight:700,color:DARK}}>{r.val}</div></div></div>))}<div style={{background:"#F9FAFB",borderRadius:14,padding:"14px"}}><div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",marginBottom:10}}>Bölüşüm</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>{[{ad:"Ertuğrul",val:detailF.ertugrul,c:"#7C3AED"},{ad:"Burak",val:detailF.burak,c:ACCENT},{ad:"Onur",val:detailF.onur,c:"#059669"}].map(k=>(<div key={k.ad} style={{textAlign:"center"}}><div style={{fontSize:10,color:"#9CA3AF",fontWeight:600}}>{k.ad}</div><div style={{fontSize:16,fontWeight:800,marginTop:2,color:k.c}}>{Number(k.val||0).toLocaleString("tr")} ₺</div></div>))}</div></div>{detailF.notlar&&<div style={{background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:12,padding:"12px 14px"}}><div style={{fontSize:10,color:"#92400E",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Not</div><div style={{fontSize:13,color:"#78350F"}}>{detailF.notlar}</div></div>}</div><div style={{padding:"12px 20px 28px",borderTop:"1px solid #F3F4F6",display:"flex",gap:8,flexShrink:0}}><button onClick={()=>setDetailF(null)} style={{...S.btnGhost,flex:1}}>Kapat</button><button onClick={()=>setConfirmDel(detailF.id)} style={{...S.btnGhost,color:"#DC2626",borderColor:"#FECACA"}}>Sil</button><button onClick={()=>openEdit(detailF)} style={{...S.btnPrimary,flex:2}}>✏️ Düzenle</button></div></div></div>)}
-      {modal&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)}><div style={S.sheet}><div style={{padding:"16px 20px",borderBottom:"1px solid #F3F4F6",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}><div style={{fontWeight:800,fontSize:15,color:DARK}}>{modal==="add"?"Yeni Firma":"Firma Düzenle"}</div><button onClick={()=>setModal(null)} style={S.closeBtn}>×</button></div><div style={{overflowY:"auto",flex:1,padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}><div style={S.field}><label style={S.label}>Firma Adı *</label><input {...inp("firma_adi")} placeholder="Örn: ABC Dijital" style={S.input}/></div><div style={S.field}><label style={S.label}>Aylık Tutar (₺)</label><input {...inp("tutar")} type="number" placeholder="5000" style={S.input}/></div><div style={S.field}><label style={S.label}>Ödeme Tipi</label><select {...inp("odeme_tipi")} style={S.input}><option value="faturali">🧾 Faturalı</option><option value="nakit">💵 Nakit</option></select></div><div><div style={{...S.label,marginBottom:8}}>Bölüşüm (₺)</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>{[{k:"ertugrul",l:"Ertuğrul"},{k:"burak",l:"Burak"},{k:"onur",l:"Onur"}].map(x=>(<div key={x.k} style={S.field}><label style={S.label}>{x.l}</label><input {...inp(x.k)} type="number" placeholder="0" style={S.input}/></div>))}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:6,textAlign:"right",fontWeight:600}}>Toplam: {(Number(form.ertugrul||0)+Number(form.burak||0)+Number(form.onur||0)).toLocaleString("tr")} ₺{Number(form.tutar)>0&&Number(form.ertugrul||0)+Number(form.burak||0)+Number(form.onur||0)!==Number(form.tutar)&&<span style={{color:"#DC2626",marginLeft:5}}>⚠️ Eşleşmiyor</span>}</div></div><div style={S.field}><label style={S.label}>Not (opsiyonel)</label><textarea {...inp("notlar")} rows={2} style={{...S.input,resize:"vertical"}}/></div></div><div style={{padding:"12px 20px 28px",borderTop:"1px solid #F3F4F6",display:"flex",gap:8,flexShrink:0}}><button onClick={()=>setModal(null)} style={{...S.btnGhost,flex:1}}>İptal</button><button onClick={saveForm} style={{...S.btnPrimary,flex:2}}>Kaydet</button></div></div></div>)}
+      {modal&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)}><div style={S.sheet}><div style={{padding:"16px 20px",borderBottom:"1px solid #F3F4F6",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}><div style={{fontWeight:800,fontSize:15,color:DARK}}>{modal==="add"?"Yeni Firma":"Firma Düzenle"}</div><button onClick={()=>setModal(null)} style={S.closeBtn}>×</button></div><div style={{overflowY:"auto",flex:1,padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}><div style={S.field}><label style={S.label}>Firma Adı *</label><input {...inp("firma_adi")} placeholder="Örn: ABC Dijital" style={S.input}/></div><div style={S.field}><label style={S.label}>Aylık Tutar (₺)</label><input {...inp("tutar")} type="number" placeholder="5000" style={S.input}/></div><div style={S.field}><label style={S.label}>Ödeme Tipi</label><select {...inp("odeme_tipi")} style={S.input}><option value="faturali">🧾 Faturalı</option><option value="nakit">💵 Nakit</option></select></div><div><div style={{...S.label,marginBottom:8}}>Bölüşüm (₺)</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>{[{k:"ertugrul",l:"Ertuğrul"},{k:"burak",l:"Burak"},{k:"onur",l:"Onur"}].map(x=>(<div key={x.k} style={S.field}><label style={S.label}>{x.l}</label><input {...inp(x.k)} type="number" placeholder="0" style={S.input}/></div>))}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:6,textAlign:"right",fontWeight:600}}>Toplam: {(Number(form.ertugrul||0)+Number(form.burak||0)+Number(form.onur||0)).toLocaleString("tr")} ₺{Number(form.tutar)>0&&Number(form.ertugrul||0)+Number(form.burak||0)+Number(form.onur||0)!==Number(form.tutar)&&<span style={{color:"#DC2626",marginLeft:5}}>⚠️</span>}</div></div><div style={S.field}><label style={S.label}>Not (opsiyonel)</label><textarea {...inp("notlar")} rows={2} style={{...S.input,resize:"vertical"}}/></div></div><div style={{padding:"12px 20px 28px",borderTop:"1px solid #F3F4F6",display:"flex",gap:8,flexShrink:0}}><button onClick={()=>setModal(null)} style={{...S.btnGhost,flex:1}}>İptal</button><button onClick={saveForm} style={{...S.btnPrimary,flex:2}}>Kaydet</button></div></div></div>)}
       {confirmDel&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmDel(null)}><div style={S.sheet}><div style={{padding:"32px 24px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🗑️</div><div style={{fontWeight:800,fontSize:16,marginBottom:8,color:DARK}}>Firmayı sil?</div><div style={{fontSize:13,color:"#9CA3AF",marginBottom:24}}>Tüm ödeme geçmişi silinir.</div><div style={{display:"flex",gap:10}}><button onClick={()=>setConfirmDel(null)} style={{...S.btnGhost,flex:1}}>İptal</button><button onClick={()=>delF(confirmDel)} style={{...S.btnPrimary,flex:1,background:"linear-gradient(135deg,#EF4444,#DC2626)"}}>Sil</button></div></div></div></div>)}
       {odemeModal&&<OdemeModal firma={odemeModal} userId={userId} onClose={()=>{setOdemeModal(null);fetchF();}}/>}
     </div>
   );
 }
 
-// ── FİNANS (Harcama + Gelir/Gider) ────────────────────────────────────────
 function FinansSayfasi({userId}) {
   const [harcamalar,setHarcamalar]=useState([]); const [gelirler,setGelirler]=useState([]);
   const [loading,setLoading]=useState(true); const [aktifTab,setAktifTab]=useState("ozet");
   const [modal,setModal]=useState(null); const [form,setForm]=useState(EMPTY_HARCAMA);
   const [filtrAy,setFiltrAy]=useState(buAy()); const [confirmDel,setConfirmDel]=useState(null);
   const [excelLoading,setExcelLoading]=useState(false);
-
   useEffect(()=>{fetchAll();},[filtrAy]);
-
-  const fetchAll=async()=>{ setLoading(true);
-    const[{data:h},{data:g}]=await Promise.all([
-      supabase.from("harcamalar").select("*").eq("ay",filtrAy).order("tarih",{ascending:false}),
-      supabase.from("gelirler").select("*").eq("ay",filtrAy).order("tarih",{ascending:false}),
-    ]);
-    setHarcamalar(h||[]); setGelirler(g||[]); setLoading(false);
-  };
-
+  const fetchAll=async()=>{ setLoading(true); const[{data:h},{data:g}]=await Promise.all([supabase.from("harcamalar").select("*").eq("ay",filtrAy).order("tarih",{ascending:false}),supabase.from("gelirler").select("*").eq("ay",filtrAy).order("tarih",{ascending:false})]); setHarcamalar(h||[]); setGelirler(g||[]); setLoading(false); };
   const toplamH=harcamalar.reduce((s,h)=>s+(Number(h.tutar)||0),0);
   const toplamG=gelirler.reduce((s,g)=>s+(Number(g.tutar)||0),0);
   const netKar=toplamG-toplamH;
-
-  const katDagilim=useMemo(()=>{
-    const m={};
-    harcamalar.forEach(h=>{m[h.kategori]=(m[h.kategori]||0)+(Number(h.tutar)||0);});
-    return Object.entries(m).sort((a,b)=>b[1]-a[1]);
-  },[harcamalar]);
-
+  const katDagilim=useMemo(()=>{ const m={}; harcamalar.forEach(h=>{m[h.kategori]=(m[h.kategori]||0)+(Number(h.tutar)||0);}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); },[harcamalar]);
   const maxKat=Math.max(...katDagilim.map(k=>k[1]),1);
-
-  const saveHarcama=async()=>{
-    if(!form.aciklama.trim()||!form.tutar)return;
-    const kat=form.kategori==="auto"?otomatikKategori(form.aciklama):form.kategori;
-    const p={tarih:form.tarih,aciklama:form.aciklama,tutar:Number(form.tutar),kategori:kat,kart:form.kart,ay:filtrAy,user_id:userId};
-    if(modal==="add")await supabase.from("harcamalar").insert([p]);
-    else await supabase.from("harcamalar").update(p).eq("id",modal.id);
-    setModal(null);fetchAll();
-  };
-
+  const saveHarcama=async()=>{ if(!form.aciklama.trim()||!form.tutar)return; const kat=otomatikKategori(form.aciklama); const p={tarih:form.tarih,aciklama:form.aciklama,tutar:Number(form.tutar),kategori:form.kategori||kat,kart:form.kart,ay:filtrAy,user_id:userId}; if(modal==="add")await supabase.from("harcamalar").insert([p]); else await supabase.from("harcamalar").update(p).eq("id",modal.id); setModal(null);fetchAll(); };
   const delH=async(id)=>{ await supabase.from("harcamalar").delete().eq("id",id); setConfirmDel(null);fetchAll(); };
-
-  const excelYukle=async(file)=>{
-    setExcelLoading(true);
-    const r=new FileReader();
-    r.onload=async(e)=>{
-      try{
-        const d=new Uint8Array(e.target.result);
-        const wb=XLSX.read(d,{type:"array"});
-        const ws=wb.Sheets[wb.SheetNames[0]];
-        const json=XLSX.utils.sheet_to_json(ws,{defval:""});
-        const payload=json.map(row=>{
-          const aciklama=String(row["İşlem Açıklaması"]||row["Açıklama"]||row["aciklama"]||row["description"]||"");
-          const tutar=Math.abs(Number(String(row["Tutar"]||row["tutar"]||row["amount"]||"0").replace(",",".")));
-          const tarih=row["İşlem Tarihi"]||row["Tarih"]||row["tarih"]||new Date().toISOString().slice(0,10);
-          if(!aciklama||!tutar)return null;
-          return{tarih:tarih,aciklama,tutar,kategori:otomatikKategori(aciklama),kart:row["Kart"]||"",ay:filtrAy,user_id:userId};
-        }).filter(Boolean);
-        if(payload.length){await supabase.from("harcamalar").insert(payload);}
-        fetchAll();
-      }catch(err){console.error(err);}
-      setExcelLoading(false);
-    };
-    r.readAsArrayBuffer(file);
-  };
-
+  const excelYukle=async(file)=>{ setExcelLoading(true); const r=new FileReader(); r.onload=async(e)=>{ try{ const d=new Uint8Array(e.target.result); const wb=XLSX.read(d,{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]]; const json=XLSX.utils.sheet_to_json(ws,{defval:""}); const payload=json.map(row=>{ const aciklama=String(row["İşlem Açıklaması"]||row["Açıklama"]||row["aciklama"]||row["description"]||""); const tutar=Math.abs(Number(String(row["Tutar"]||row["tutar"]||row["amount"]||"0").replace(",","."))); const tarih=row["İşlem Tarihi"]||row["Tarih"]||row["tarih"]||new Date().toISOString().slice(0,10); if(!aciklama||!tutar)return null; return{tarih,aciklama,tutar,kategori:otomatikKategori(aciklama),kart:row["Kart"]||"",ay:filtrAy,user_id:userId}; }).filter(Boolean); if(payload.length){await supabase.from("harcamalar").insert(payload);} fetchAll(); }catch(err){console.error(err);} setExcelLoading(false); }; r.readAsArrayBuffer(file); };
   const inp=(f)=>({value:form[f],onChange:e=>setForm(x=>({...x,[f]:e.target.value}))});
-
-  // Son 6 ay
   const sonAylar=[]; const now=new Date(); for(let i=0;i<6;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);sonAylar.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}
-
   return (
     <div style={{padding:"12px",maxWidth:640,margin:"0 auto",paddingBottom:90}}>
-
-      {/* AY SEÇİCİ */}
       <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:6,marginBottom:12}}>
-        {sonAylar.map(ay=>{ const a=filtrAy===ay; return(
-          <button key={ay} onClick={()=>setFiltrAy(ay)} style={{padding:"7px 14px",borderRadius:99,border:`2px solid ${a?ACCENT:"#E5E7EB"}`,background:a?ACCENT:"#fff",color:a?"#fff":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",boxShadow:a?`0 4px 12px rgba(255,107,53,.3)`:"none"}}>
-            {ayLabel(ay)}
-          </button>
-        );})}
+        {sonAylar.map(ay=>{ const a=filtrAy===ay; return(<button key={ay} onClick={()=>setFiltrAy(ay)} style={{padding:"7px 14px",borderRadius:99,border:`2px solid ${a?ACCENT:"#E5E7EB"}`,background:a?ACCENT:"#fff",color:a?"#fff":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",boxShadow:a?`0 4px 12px rgba(255,107,53,.3)`:"none"}}>{ayLabel(ay)}</button>); })}
       </div>
-
-      {/* ÖZET KARTLAR */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
-        {[
-          {icon:"📈",label:"Gelir",value:toplamG.toLocaleString("tr")+"₺",grad:"linear-gradient(135deg,#11998E,#38EF7D)"},
-          {icon:"📉",label:"Gider",value:toplamH.toLocaleString("tr")+"₺",grad:"linear-gradient(135deg,#EF4444,#F87171)"},
-          {icon:"💎",label:"Net Kar",value:(netKar>=0?"+":"")+netKar.toLocaleString("tr")+"₺",grad:netKar>=0?"linear-gradient(135deg,#667EEA,#764BA2)":"linear-gradient(135deg,#F97316,#FB923C)"},
-        ].map(s=>(
-          <div key={s.label} style={{borderRadius:14,padding:"12px 10px",background:s.grad,color:"#fff",boxShadow:"0 4px 15px rgba(0,0,0,.1)"}}>
-            <div style={{fontSize:18,marginBottom:5}}>{s.icon}</div>
-            <div style={{fontSize:13,fontWeight:800,letterSpacing:"-0.02em",lineHeight:1.2}}>{s.value}</div>
-            <div style={{fontSize:9,marginTop:4,opacity:.8,fontWeight:600,textTransform:"uppercase"}}>{s.label}</div>
-          </div>
-        ))}
+        {[{icon:"📈",label:"Gelir",value:toplamG.toLocaleString("tr")+"₺",grad:"linear-gradient(135deg,#11998E,#38EF7D)"},{icon:"📉",label:"Gider",value:toplamH.toLocaleString("tr")+"₺",grad:"linear-gradient(135deg,#EF4444,#F87171)"},{icon:"💎",label:"Net Kar",value:(netKar>=0?"+":"")+netKar.toLocaleString("tr")+"₺",grad:netKar>=0?"linear-gradient(135deg,#667EEA,#764BA2)":"linear-gradient(135deg,#F97316,#FB923C)"}].map(s=>(<div key={s.label} style={{borderRadius:14,padding:"12px 10px",background:s.grad,color:"#fff",boxShadow:"0 4px 15px rgba(0,0,0,.1)"}}><div style={{fontSize:18,marginBottom:5}}>{s.icon}</div><div style={{fontSize:13,fontWeight:800,letterSpacing:"-0.02em",lineHeight:1.2}}>{s.value}</div><div style={{fontSize:9,marginTop:4,opacity:.8,fontWeight:600,textTransform:"uppercase"}}>{s.label}</div></div>))}
       </div>
-
-      {/* TAB BAR */}
       <div style={{display:"flex",background:"#F3F4F6",borderRadius:14,padding:4,marginBottom:12,gap:2}}>
-        {[{key:"ozet",label:"📊 Özet"},{key:"harcamalar",label:"💳 Harcamalar"},{key:"gelirler",label:"💰 Gelirler"}].map(t=>{ const a=aktifTab===t.key; return(
-          <button key={t.key} onClick={()=>setAktifTab(t.key)} style={{flex:1,padding:"9px 4px",borderRadius:10,border:"none",background:a?"#fff":"transparent",color:a?DARK:"#9CA3AF",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:a?"0 2px 8px rgba(0,0,0,.08)":"none",transition:"all .2s"}}>
-            {t.label}
-          </button>
-        );})}
+        {[{key:"ozet",label:"📊 Özet"},{key:"harcamalar",label:"💳 Harcamalar"},{key:"gelirler",label:"💰 Gelirler"}].map(t=>{ const a=aktifTab===t.key; return(<button key={t.key} onClick={()=>setAktifTab(t.key)} style={{flex:1,padding:"9px 4px",borderRadius:10,border:"none",background:a?"#fff":"transparent",color:a?DARK:"#9CA3AF",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:a?"0 2px 8px rgba(0,0,0,.08)":"none"}}>{t.label}</button>); })}
       </div>
-
-      {/* ÖZET TAB */}
-      {aktifTab==="ozet"&&(
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {/* Kategori dağılımı */}
-          <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
-            <div style={{fontWeight:800,fontSize:14,marginBottom:14,color:DARK}}>📊 Harcama Kategorileri</div>
-            {katDagilim.length===0&&<div style={{textAlign:"center",padding:"20px",color:"#9CA3AF",fontSize:13}}>Bu ay harcama yok.</div>}
-            {katDagilim.map(([kat,tutar])=>{
-              const k=KATEGORILER.find(x=>x.key===kat)||KATEGORILER[KATEGORILER.length-1];
-              return(
-                <div key={kat} style={{marginBottom:12}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                    <span style={{fontSize:13,fontWeight:700,color:k.color}}>{k.label}</span>
-                    <span style={{fontSize:12,fontWeight:700,color:DARK}}>{tutar.toLocaleString("tr")} ₺</span>
-                  </div>
-                  <div style={{height:8,background:"#F3F4F6",borderRadius:99}}>
-                    <div style={{height:"100%",width:`${(tutar/maxKat)*100}%`,background:k.color,borderRadius:99,transition:"width .5s"}}/>
-                  </div>
-                </div>
-              );
-            })}
+      {aktifTab==="ozet"&&(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+          <div style={{fontWeight:800,fontSize:14,marginBottom:14,color:DARK}}>📊 Harcama Kategorileri</div>
+          {katDagilim.length===0&&<div style={{textAlign:"center",padding:"20px",color:"#9CA3AF",fontSize:13}}>Bu ay harcama yok.</div>}
+          {katDagilim.map(([kat,tutar])=>{ const k=KATEGORILER.find(x=>x.key===kat)||KATEGORILER[KATEGORILER.length-1]; return(<div key={kat} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:13,fontWeight:700,color:k.color}}>{k.label}</span><span style={{fontSize:12,fontWeight:700,color:DARK}}>{tutar.toLocaleString("tr")} ₺</span></div><div style={{height:8,background:"#F3F4F6",borderRadius:99}}><div style={{height:"100%",width:`${(tutar/maxKat)*100}%`,background:k.color,borderRadius:99}}/></div></div>); })}
+        </div>
+        <div style={{background:"linear-gradient(135deg,#EFF6FF,#DBEAFE)",border:"1px solid #BFDBFE",borderRadius:16,padding:"16px"}}>
+          <div style={{fontWeight:800,fontSize:13,color:"#1D4ED8",marginBottom:8}}>📤 Ekstre Yükle</div>
+          <div style={{fontSize:12,color:"#3B82F6",marginBottom:10}}>Excel veya CSV ekstre yükleyin, kategoriler otomatik belirlenir.</div>
+          <label style={{display:"inline-block",background:"#2563EB",color:"#fff",padding:"9px 16px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            {excelLoading?"Yükleniyor...":"⬆️ Ekstre Yükle (.xlsx/.csv)"}
+            <input type="file" accept=".xlsx,.csv" style={{display:"none"}} onChange={e=>e.target.files[0]&&excelYukle(e.target.files[0])}/>
+          </label>
+        </div>
+      </div>)}
+      {aktifTab==="harcamalar"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <button onClick={()=>{setForm({...EMPTY_HARCAMA});setModal("add");}} style={{...S.btnPrimary,width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{fontSize:18}}>+</span> Harcama Ekle
+        </button>
+        {loading&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Yükleniyor…</div>}
+        {!loading&&harcamalar.length===0&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Bu ay harcama yok.</div>}
+        {harcamalar.map(h=>(<div key={h.id} style={{background:"#fff",borderRadius:14,padding:"13px 14px",boxShadow:"0 2px 8px rgba(0,0,0,.05)",border:"1px solid #F3F4F6"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+            <div style={{flex:1,minWidth:0,marginRight:8}}><div style={{fontWeight:700,fontSize:14,color:DARK,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.aciklama}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{new Date(h.tarih).toLocaleDateString("tr-TR")} {h.kart&&`· ${h.kart}`}</div></div>
+            <div style={{textAlign:"right",flexShrink:0}}><div style={{fontWeight:800,fontSize:15,color:"#DC2626"}}>-{Number(h.tutar).toLocaleString("tr")} ₺</div><KategoriTag kat={h.kategori}/></div>
           </div>
-
-          {/* Excel Yükle */}
-          <div style={{background:"linear-gradient(135deg,#EFF6FF,#DBEAFE)",border:"1px solid #BFDBFE",borderRadius:16,padding:"16px"}}>
-            <div style={{fontWeight:800,fontSize:13,color:"#1D4ED8",marginBottom:8}}>📤 Ekstre Yükle</div>
-            <div style={{fontSize:12,color:"#3B82F6",marginBottom:10}}>Excel veya CSV olarak ekstre yükleyin, kategoriler otomatik belirlenir.</div>
-            <label style={{display:"inline-block",background:"#2563EB",color:"#fff",padding:"9px 16px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-              {excelLoading?"Yükleniyor...":"⬆️ Ekstre Yükle (.xlsx/.csv)"}
-              <input type="file" accept=".xlsx,.csv" style={{display:"none"}} onChange={e=>e.target.files[0]&&excelYukle(e.target.files[0])}/>
-            </label>
+          <div style={{display:"flex",gap:6,justifyContent:"flex-end",marginTop:6}}>
+            <button onClick={()=>{setForm({tarih:h.tarih,aciklama:h.aciklama,tutar:h.tutar,kategori:h.kategori,kart:h.kart||""});setModal(h);}} style={{...S.btnGhost,padding:"5px 12px",fontSize:11}}>Düzenle</button>
+            <button onClick={()=>setConfirmDel(h.id)} style={{...S.btnGhost,padding:"5px 12px",fontSize:11,color:"#DC2626",borderColor:"#FECACA"}}>Sil</button>
           </div>
-        </div>
-      )}
-
-      {/* HARCAMALAR TAB */}
-      {aktifTab==="harcamalar"&&(
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <button onClick={()=>{setForm({...EMPTY_HARCAMA,ay:filtrAy});setModal("add");}} style={{...S.btnPrimary,width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            <span style={{fontSize:18}}>+</span> Harcama Ekle
-          </button>
-          {loading&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Yükleniyor…</div>}
-          {!loading&&harcamalar.length===0&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Bu ay harcama yok.</div>}
-          {harcamalar.map(h=>(
-            <div key={h.id} style={{background:"#fff",borderRadius:14,padding:"13px 14px",boxShadow:"0 2px 8px rgba(0,0,0,.05)",border:"1px solid #F3F4F6"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                <div style={{flex:1,minWidth:0,marginRight:8}}>
-                  <div style={{fontWeight:700,fontSize:14,color:DARK,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h.aciklama}</div>
-                  <div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{new Date(h.tarih).toLocaleDateString("tr-TR")} {h.kart&&`· ${h.kart}`}</div>
-                </div>
-                <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{fontWeight:800,fontSize:15,color:"#DC2626"}}>-{Number(h.tutar).toLocaleString("tr")} ₺</div>
-                  <KategoriTag kat={h.kategori}/>
-                </div>
-              </div>
-              <div style={{display:"flex",gap:6,justifyContent:"flex-end",marginTop:6}}>
-                <button onClick={()=>{setForm({tarih:h.tarih,aciklama:h.aciklama,tutar:h.tutar,kategori:h.kategori,kart:h.kart||""});setModal(h);}} style={{...S.btnGhost,padding:"5px 12px",fontSize:11}}>Düzenle</button>
-                <button onClick={()=>setConfirmDel(h.id)} style={{...S.btnGhost,padding:"5px 12px",fontSize:11,color:"#DC2626",borderColor:"#FECACA"}}>Sil</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* GELİRLER TAB */}
-      {aktifTab==="gelirler"&&(
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <button onClick={async()=>{ const m=new Date(); const ay=`${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}`; const{data:firmalar}=await supabase.from("firmalar").select("*"); const{data:od}=await supabase.from("odeme_gecmisi").select("firma_id,odeme_yapti,tutar").eq("ay",filtrAy); const odeyen=new Set((od||[]).filter(o=>o.odeme_yapti).map(o=>o.firma_id)); const payload=(firmalar||[]).filter(f=>odeyen.has(f.id)).map(f=>({tarih:new Date().toISOString().slice(0,10),aciklama:f.firma_adi+" - Aylık Ödeme",tutar:Number(f.tutar),kategori:"Ajans Geliri",ay:filtrAy,user_id:userId})); if(payload.length){await supabase.from("gelirler").insert(payload);fetchAll();} }} style={{...S.btnGhost,width:"100%",fontSize:13}}>🔄 Ajans Gelirlerini Aktar</button>
-          {loading&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Yükleniyor…</div>}
-          {!loading&&gelirler.length===0&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Bu ay gelir kaydı yok.</div>}
-          {gelirler.map(g=>(
-            <div key={g.id} style={{background:"#fff",borderRadius:14,padding:"13px 14px",boxShadow:"0 2px 8px rgba(0,0,0,.05)",border:"1px solid #F3F4F6"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontWeight:700,fontSize:14,color:DARK}}>{g.aciklama}</div>
-                  <div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{new Date(g.tarih).toLocaleDateString("tr-TR")}</div>
-                </div>
-                <div style={{fontWeight:800,fontSize:16,color:"#059669"}}>+{Number(g.tutar).toLocaleString("tr")} ₺</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* HARCAMA ADD/EDIT */}
-      {modal&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={S.sheet}>
-            <div style={{padding:"16px 20px",borderBottom:"1px solid #F3F4F6",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-              <div style={{fontWeight:800,fontSize:15,color:DARK}}>{modal==="add"?"Harcama Ekle":"Harcama Düzenle"}</div>
-              <button onClick={()=>setModal(null)} style={S.closeBtn}>×</button>
-            </div>
-            <div style={{overflowY:"auto",flex:1,padding:"14px 20px",display:"flex",flexDirection:"column",gap:12}}>
-              <div style={S.field}><label style={S.label}>Açıklama *</label><input {...inp("aciklama")} placeholder="Örn: TikTok Ads" style={S.input} onBlur={e=>{ if(form.kategori==="Diğer"||form.kategori==="auto")setForm(f=>({...f,kategori:otomatikKategori(e.target.value)})); }}/></div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div style={S.field}><label style={S.label}>Tutar (₺)</label><input {...inp("tutar")} type="number" placeholder="0" style={S.input}/></div>
-                <div style={S.field}><label style={S.label}>Tarih</label><input {...inp("tarih")} type="date" style={S.input}/></div>
-              </div>
-              <div style={S.field}>
-                <label style={S.label}>Kategori</label>
-                <select {...inp("kategori")} style={S.input}>
-                  {KATEGORILER.map(k=><option key={k.key} value={k.key}>{k.label}</option>)}
-                </select>
-              </div>
-              <div style={S.field}><label style={S.label}>Kart (opsiyonel)</label><input {...inp("kart")} placeholder="Örn: QNB, Garanti" style={S.input}/></div>
-            </div>
-            <div style={{padding:"12px 20px 28px",borderTop:"1px solid #F3F4F6",display:"flex",gap:8,flexShrink:0}}>
-              <button onClick={()=>setModal(null)} style={{...S.btnGhost,flex:1}}>İptal</button>
-              <button onClick={saveHarcama} style={{...S.btnPrimary,flex:2}}>Kaydet</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmDel&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmDel(null)}>
-          <div style={S.sheet}>
-            <div style={{padding:"32px 24px",textAlign:"center"}}>
-              <div style={{fontSize:48,marginBottom:12}}>🗑️</div>
-              <div style={{fontWeight:800,fontSize:16,marginBottom:8,color:DARK}}>Sil?</div>
-              <div style={{fontSize:13,color:"#9CA3AF",marginBottom:24}}>Bu işlem geri alınamaz.</div>
-              <div style={{display:"flex",gap:10}}>
-                <button onClick={()=>setConfirmDel(null)} style={{...S.btnGhost,flex:1}}>İptal</button>
-                <button onClick={()=>delH(confirmDel)} style={{...S.btnPrimary,flex:1,background:"linear-gradient(135deg,#EF4444,#DC2626)"}}>Sil</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        </div>))}
+      </div>)}
+      {aktifTab==="gelirler"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <button onClick={async()=>{ const{data:firmalar}=await supabase.from("firmalar").select("*"); const{data:od}=await supabase.from("odeme_gecmisi").select("firma_id,odeme_yapti,tutar").eq("ay",filtrAy); const odeyen=new Set((od||[]).filter(o=>o.odeme_yapti).map(o=>o.firma_id)); const payload=(firmalar||[]).filter(f=>odeyen.has(f.id)).map(f=>({tarih:new Date().toISOString().slice(0,10),aciklama:f.firma_adi+" - Aylık Ödeme",tutar:Number(f.tutar),kategori:"Ajans Geliri",ay:filtrAy,user_id:userId})); if(payload.length){await supabase.from("gelirler").insert(payload);fetchAll();} }} style={{...S.btnGhost,width:"100%",fontSize:13}}>🔄 Ajans Gelirlerini Aktar</button>
+        {loading&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Yükleniyor…</div>}
+        {!loading&&gelirler.length===0&&<div style={{textAlign:"center",padding:"30px",color:"#9CA3AF"}}>Bu ay gelir kaydı yok.</div>}
+        {gelirler.map(g=>(<div key={g.id} style={{background:"#fff",borderRadius:14,padding:"13px 14px",boxShadow:"0 2px 8px rgba(0,0,0,.05)",border:"1px solid #F3F4F6"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontWeight:700,fontSize:14,color:DARK}}>{g.aciklama}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{new Date(g.tarih).toLocaleDateString("tr-TR")}</div></div><div style={{fontWeight:800,fontSize:16,color:"#059669"}}>+{Number(g.tutar).toLocaleString("tr")} ₺</div></div></div>))}
+      </div>)}
+      {modal&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)}><div style={S.sheet}><div style={{padding:"16px 20px",borderBottom:"1px solid #F3F4F6",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}><div style={{fontWeight:800,fontSize:15,color:DARK}}>{modal==="add"?"Harcama Ekle":"Harcama Düzenle"}</div><button onClick={()=>setModal(null)} style={S.closeBtn}>×</button></div><div style={{overflowY:"auto",flex:1,padding:"14px 20px",display:"flex",flexDirection:"column",gap:12}}><div style={S.field}><label style={S.label}>Açıklama *</label><input {...inp("aciklama")} placeholder="Örn: TikTok Ads" style={S.input}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div style={S.field}><label style={S.label}>Tutar (₺)</label><input {...inp("tutar")} type="number" placeholder="0" style={S.input}/></div><div style={S.field}><label style={S.label}>Tarih</label><input {...inp("tarih")} type="date" style={S.input}/></div></div><div style={S.field}><label style={S.label}>Kategori</label><select {...inp("kategori")} style={S.input}>{KATEGORILER.map(k=><option key={k.key} value={k.key}>{k.label}</option>)}</select></div><div style={S.field}><label style={S.label}>Kart (opsiyonel)</label><input {...inp("kart")} placeholder="Örn: QNB, Garanti" style={S.input}/></div></div><div style={{padding:"12px 20px 28px",borderTop:"1px solid #F3F4F6",display:"flex",gap:8,flexShrink:0}}><button onClick={()=>setModal(null)} style={{...S.btnGhost,flex:1}}>İptal</button><button onClick={saveHarcama} style={{...S.btnPrimary,flex:2}}>Kaydet</button></div></div></div>)}
+      {confirmDel&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmDel(null)}><div style={S.sheet}><div style={{padding:"32px 24px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🗑️</div><div style={{fontWeight:800,fontSize:16,marginBottom:8,color:DARK}}>Sil?</div><div style={{fontSize:13,color:"#9CA3AF",marginBottom:24}}>Bu işlem geri alınamaz.</div><div style={{display:"flex",gap:10}}><button onClick={()=>setConfirmDel(null)} style={{...S.btnGhost,flex:1}}>İptal</button><button onClick={()=>delH(confirmDel)} style={{...S.btnPrimary,flex:1,background:"linear-gradient(135deg,#EF4444,#DC2626)"}}>Sil</button></div></div></div></div>)}
     </div>
   );
 }
 
-// ── ANA APP ────────────────────────────────────────────────────────────────
 export default function App() {
   const [session,setSession]=useState(null); const [leads,setLeads]=useState([]); const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState(""); const [filterStatus,setFilterStatus]=useState("tümü");
   const [modal,setModal]=useState(null); const [form,setForm]=useState(EMPTY_FORM);
   const [confirmDel,setConfirmDel]=useState(null); const [detailId,setDetailId]=useState(null);
   const [showImport,setShowImport]=useState(false); const [sayfa,setSayfa]=useState("leads");
+  const [seciliLeads,setSeciliLeads]=useState(new Set());
+  const [topluSilMode,setTopluSilMode]=useState(false);
+  const [topluSilConfirm,setTopluSilConfirm]=useState(false);
 
   useEffect(()=>{ supabase.auth.getSession().then(({data:{session}})=>setSession(session)); supabase.auth.onAuthStateChange((_,s)=>setSession(s)); },[]);
   useEffect(()=>{if(session)fetchLeads();},[session]);
@@ -548,14 +348,11 @@ export default function App() {
   const fetchLeads=async()=>{ setLoading(true); const{data}=await supabase.from("leads").select("*").order("created_at",{ascending:false}); setLeads(data||[]); setLoading(false); };
   const filtered=useMemo(()=>leads.filter(l=>{ const q=search.toLowerCase(); return(!q||l.name?.toLowerCase().includes(q)||l.kurum?.toLowerCase().includes(q)||l.il?.toLowerCase().includes(q))&&(filterStatus==="tümü"||l.status===filterStatus); }),[leads,search,filterStatus]);
   const stats=useMemo(()=>({ total:leads.length, kazanildi:leads.filter(l=>l.status==="kazanildi").length, topOg:leads.filter(l=>l.status==="kazanildi").reduce((s,l)=>s+(Number(l.ogrenci_sayisi)||0),0) }),[leads]);
-const [seciliLeads,setSeciliLeads]=useState(new Set());
-const [topluSilMode,setTopluSilMode]=useState(false);
-const [topluSilConfirm,setTopluSilConfirm]=useState(false);
 
-const toggleSecim=(id)=>setSeciliLeads(prev=>{ const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
-const tumunuSec=()=>setSeciliLeads(prev=>prev.size===filtered.length?new Set():new Set(filtered.map(l=>l.id)));
-const topluSil=async()=>{ await supabase.from("leads").delete().in("id",[...seciliLeads]); setSeciliLeads(new Set()); setTopluSilMode(false); setTopluSilConfirm(false); fetchLeads(); };
-```
+  const toggleSecim=(id)=>setSeciliLeads(prev=>{ const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const tumunuSec=()=>setSeciliLeads(prev=>prev.size===filtered.length?new Set():new Set(filtered.map(l=>l.id)));
+  const topluSil=async()=>{ await supabase.from("leads").delete().in("id",[...seciliLeads]); setSeciliLeads(new Set()); setTopluSilMode(false); setTopluSilConfirm(false); fetchLeads(); };
+
   const openAdd=()=>{setForm(EMPTY_FORM);setModal("add");};
   const openEdit=(lead)=>{ setForm({name:lead.name||"",phone:lead.phone||"",il:lead.il||"",ilce:lead.ilce||"",kurum:lead.kurum||"",sinavTipi:lead.sinav_tipi||[],ogrenciSayisi:lead.ogrenci_sayisi||"",status:lead.status||"yeni",note:lead.note||""}); setModal(lead);setDetailId(null); };
   const toggleSinav=(key)=>setForm(f=>({...f,sinavTipi:f.sinavTipi.includes(key)?f.sinavTipi.filter(x=>x!==key):[...f.sinavTipi,key]}));
@@ -575,7 +372,7 @@ const topluSil=async()=>{ await supabase.from("leads").delete().in("id",[...seci
         .sinav-btn{border:2px solid #E5E7EB;border-radius:12px;padding:10px 6px;cursor:pointer;background:#fff;text-align:center;width:100%;transition:all .2s}
         .sinav-btn.on{border-color:${ACCENT};background:${ACCENT};color:#fff}
         .chip{padding:8px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid transparent;white-space:nowrap;background:none;transition:all .2s}
-        .lead-card{background:#fff;border-radius:16px;padding:14px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid #F3F4F6;transition:transform .15s,box-shadow .15s}
+        .lead-card{background:#fff;border-radius:16px;padding:14px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.06);border:2px solid #F3F4F6;transition:all .15s;position:relative}
         .lead-card:active{transform:scale(.98)}
         input:focus,select:focus,textarea:focus{border-color:${ACCENT}!important;box-shadow:0 0 0 4px rgba(255,107,53,.1);outline:none}
       `}</style>
@@ -587,26 +384,44 @@ const topluSil=async()=>{ await supabase.from("leads").delete().in("id",[...seci
           <div style={{fontFamily:"'DM Mono',monospace",fontWeight:500,fontSize:16,letterSpacing:"-0.03em",color:DARK}}>vin<span style={{color:ACCENT}}>takip</span></div>
         </div>
         <div style={{flex:1}}/>
-        {sayfa==="leads"&&<button onClick={()=>setTopluSilMode(!topluSilMode)} style={{background:topluSilMode?"#FEE2E2":"#F3F4F6",border:"none",padding:"8px 10px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",color:topluSilMode?"#DC2626":"#6B7280",marginRight:6}}>🗑️</button>}
-{sayfa==="leads"&&!topluSilMode&&<button onClick={()=>setShowImport(true)}
-``` style={{background:"#F3F4F6",border:"none",padding:"8px 10px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"#6B7280",marginRight:6}}>📥</button>}
-        <button onClick={()=>supabase.auth.signOut()} style={{background:"#FEE2E2",border:"none",padding:"8px 10px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",color:"#DC2626"}}>Çıkış</button>
-        {sayfa==="leads"&&!topluSilMode&&<button onClick={openAdd}
-``` style={{...S.btnPrimary,padding:"9px 16px",marginLeft:6,fontSize:13}}>+ Yeni</button>}
+        {sayfa==="leads"&&(
+          <>
+            {topluSilMode?(
+              <button onClick={()=>{setTopluSilMode(false);setSeciliLeads(new Set());}} style={{background:"#FEE2E2",border:"none",padding:"8px 12px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",color:"#DC2626",marginRight:6}}>İptal</button>
+            ):(
+              <>
+                <button onClick={()=>setTopluSilMode(true)} style={{background:"#F3F4F6",border:"none",padding:"8px 10px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"#6B7280",marginRight:6}}>🗑️</button>
+                <button onClick={()=>setShowImport(true)} style={{background:"#F3F4F6",border:"none",padding:"8px 10px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"#6B7280",marginRight:6}}>📥</button>
+                <button onClick={openAdd} style={{...S.btnPrimary,padding:"9px 16px",fontSize:13}}>+ Yeni</button>
+              </>
+            )}
+          </>
+        )}
+        {sayfa!=="leads"&&<button onClick={()=>supabase.auth.signOut()} style={{background:"#FEE2E2",border:"none",padding:"8px 10px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",color:"#DC2626"}}>Çıkış</button>}
       </div>
 
       <div style={{paddingBottom:80}}>
         {sayfa==="leads"&&(
           <div style={{padding:"14px 12px 0",maxWidth:640,margin:"0 auto"}}>
+            {/* STATS */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
-              {[{label:"Lead",value:stats.total,icon:"👥",grad:"linear-gradient(135deg,#667EEA,#764BA2)"},{label:"Kazanılan",value:stats.kazanildi,icon:"🏆",grad:`linear-gradient(135deg,${ACCENT},${ACCENT2})`},{label:"Öğrenci",value:stats.topOg.toLocaleString("tr"),icon:"🎓",grad:"linear-gradient(135deg,#11998E,#38EF7D)"}].map(s=>(
-                <div key={s.label} style={{borderRadius:16,padding:"12px 10px",background:s.grad,color:"#fff",boxShadow:"0 4px 15px rgba(0,0,0,.1)"}}>
-                  <div style={{fontSize:18,marginBottom:6}}>{s.icon}</div>
-                  <div style={{fontSize:20,fontWeight:800,letterSpacing:"-0.03em",lineHeight:1}}>{s.value}</div>
-                  <div style={{fontSize:9,marginTop:4,opacity:.8,fontWeight:600,textTransform:"uppercase"}}>{s.label}</div>
-                </div>
-              ))}
+              {[{label:"Lead",value:stats.total,icon:"👥",grad:"linear-gradient(135deg,#667EEA,#764BA2)"},{label:"Kazanılan",value:stats.kazanildi,icon:"🏆",grad:`linear-gradient(135deg,${ACCENT},${ACCENT2})`},{label:"Öğrenci",value:stats.topOg.toLocaleString("tr"),icon:"🎓",grad:"linear-gradient(135deg,#11998E,#38EF7D)"}].map(s=>(<div key={s.label} style={{borderRadius:16,padding:"12px 10px",background:s.grad,color:"#fff",boxShadow:"0 4px 15px rgba(0,0,0,.1)"}}><div style={{fontSize:18,marginBottom:6}}>{s.icon}</div><div style={{fontSize:20,fontWeight:800,letterSpacing:"-0.03em",lineHeight:1}}>{s.value}</div><div style={{fontSize:9,marginTop:4,opacity:.8,fontWeight:600,textTransform:"uppercase"}}>{s.label}</div></div>))}
             </div>
+
+            {/* TOPLU SİLME MODU */}
+            {topluSilMode&&(
+              <div style={{background:"#FEE2E2",borderRadius:14,padding:"12px 14px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <button onClick={tumunuSec} style={{background:"none",border:"none",fontSize:13,fontWeight:700,color:"#DC2626",cursor:"pointer",fontFamily:"inherit"}}>
+                  {seciliLeads.size===filtered.length?"✓ Tümü Seçildi":"Tümünü Seç"} ({seciliLeads.size}/{filtered.length})
+                </button>
+                {seciliLeads.size>0&&(
+                  <button onClick={()=>setTopluSilConfirm(true)} style={{background:"#DC2626",color:"#fff",border:"none",padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                    🗑️ {seciliLeads.size} Kaydı Sil
+                  </button>
+                )}
+              </div>
+            )}
+
             <div style={{position:"relative",marginBottom:10}}>
               <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#9CA3AF",fontSize:16}}>🔍</span>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="İsim, kurum veya il ara…" style={{...S.input,paddingLeft:42,width:"100%",borderRadius:14}}/>
@@ -617,22 +432,18 @@ const topluSil=async()=>{ await supabase.from("leads").delete().in("id",[...seci
             {loading&&<div style={{textAlign:"center",padding:"40px",color:"#9CA3AF"}}>Yükleniyor…</div>}
             {!loading&&filtered.length===0&&<div style={{textAlign:"center",padding:"40px",color:"#9CA3AF"}}>Kayıt bulunamadı.</div>}
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {topluSilMode&&(
-  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,background:"#FEE2E2",borderRadius:12,padding:"10px 14px"}}>
-    <button onClick={tumunuSec} style={{background:"none",border:"none",fontSize:13,fontWeight:700,color:"#DC2626",cursor:"pointer",fontFamily:"inherit"}}>
-      {seciliLeads.size===filtered.length?"Seçimi Kaldır":"Tümünü Seç"} ({seciliLeads.size}/{filtered.length})
-    </button>
-    {seciliLeads.size>0&&<button onClick={()=>setTopluSilConfirm(true)} style={{background:"#DC2626",color:"#fff",border:"none",padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑️ {seciliLeads.size} Kaydı Sil</button>}
-  </div>
-)}
-{filtered.map(lead=>(
-  <div key={lead.id} className="lead-card" onClick={()=>topluSilMode?toggleSecim(lead.id):setDetailId(lead.id)}
-    style={{background:seciliLeads.has(lead.id)?"#FEF2F2":"#fff",borderColor:seciliLeads.has(lead.id)?"#FCA5A5":"#F3F4F6"}}>
-    {topluSilMode&&<div style={{position:"absolute",top:14,right:14,width:20,height:20,borderRadius:6,background:seciliLeads.has(lead.id)?"#DC2626":"#F3F4F6",border:`2px solid ${seciliLeads.has(lead.id)?"#DC2626":"#D1D5DB"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>{seciliLeads.has(lead.id)?"✓":""}</div>}
-```
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+              {filtered.map(lead=>(
+                <div key={lead.id} className="lead-card"
+                  onClick={()=>topluSilMode?toggleSecim(lead.id):setDetailId(lead.id)}
+                  style={{borderColor:seciliLeads.has(lead.id)?"#FCA5A5":"#F3F4F6",background:seciliLeads.has(lead.id)?"#FEF2F2":"#fff"}}>
+                  {topluSilMode&&(
+                    <div style={{position:"absolute",top:12,right:12,width:22,height:22,borderRadius:6,background:seciliLeads.has(lead.id)?"#DC2626":"#F3F4F6",border:`2px solid ${seciliLeads.has(lead.id)?"#DC2626":"#D1D5DB"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff",fontWeight:700}}>
+                      {seciliLeads.has(lead.id)?"✓":""}
+                    </div>
+                  )}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,paddingRight:topluSilMode?28:0}}>
                     <div style={{flex:1,minWidth:0,marginRight:10}}><div style={{fontWeight:800,fontSize:15,color:DARK,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lead.name}</div><div style={{fontSize:12,color:"#9CA3AF",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lead.kurum||"—"}</div></div>
-                    <StatusBadge statusKey={lead.status}/>
+                    {!topluSilMode&&<StatusBadge statusKey={lead.status}/>}
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                     <SinavBadge types={lead.sinav_tipi}/>
@@ -652,7 +463,7 @@ const topluSil=async()=>{ await supabase.from("leads").delete().in("id",[...seci
       {/* ALT TAB BAR */}
       <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #F3F4F6",display:"flex",zIndex:50,paddingBottom:"env(safe-area-inset-bottom)",boxShadow:"0 -4px 20px rgba(0,0,0,.06)"}}>
         {[{key:"leads",icon:"👥",label:"Leads"},{key:"rapor",icon:"📊",label:"Rapor"},{key:"ajans",icon:"🏢",label:"Ajans"},{key:"finans",icon:"💳",label:"Finans"}].map(t=>{const a=sayfa===t.key; return(
-          <button key={t.key} onClick={()=>setSayfa(t.key)} style={{flex:1,background:"none",border:"none",padding:"10px 4px 8px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+          <button key={t.key} onClick={()=>{setSayfa(t.key);setTopluSilMode(false);setSeciliLeads(new Set());}} style={{flex:1,background:"none",border:"none",padding:"10px 4px 8px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
             <div style={{fontSize:20,filter:a?"none":"grayscale(1) opacity(.5)"}}>{t.icon}</div>
             <div style={{fontSize:10,fontWeight:a?800:500,color:a?ACCENT:"#9CA3AF"}}>{t.label}</div>
             {a&&<div style={{width:20,height:3,background:`linear-gradient(90deg,${ACCENT},${ACCENT2})`,borderRadius:99}}/>}
@@ -666,22 +477,12 @@ const topluSil=async()=>{ await supabase.from("leads").delete().in("id",[...seci
       {/* ADD/EDIT LEAD */}
       {modal&&sayfa==="leads"&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setModal(null)}><div style={S.sheet}><div style={{padding:"16px 20px",borderBottom:"1px solid #F3F4F6",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}><div style={{fontWeight:800,fontSize:16,color:DARK}}>{modal==="add"?"Yeni Lead":"Lead Düzenle"}</div><button onClick={()=>setModal(null)} style={S.closeBtn}>×</button></div><div style={{overflowY:"auto",flex:1,padding:"14px 20px",display:"flex",flexDirection:"column",gap:12}}><div style={S.field}><label style={S.label}>Ad Soyad *</label><input {...inp("name")} placeholder="Ahmet Yılmaz" style={S.input}/></div><div style={S.field}><label style={S.label}>Telefon</label><input {...inp("phone")} type="tel" placeholder="05__ ___ __ __" style={S.input}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div style={S.field}><label style={S.label}>İl</label><select {...inp("il")} style={S.input}><option value="">Seçiniz</option>{ILLER.map(il=><option key={il}>{il}</option>)}</select></div><div style={S.field}><label style={S.label}>İlçe</label><input {...inp("ilce")} placeholder="İlçe" style={S.input}/></div></div><div style={S.field}><label style={S.label}>Kurum</label><input {...inp("kurum")} placeholder="Gelecek Dershanesi" style={S.input}/></div><div><div style={{...S.label,marginBottom:8}}>Sınav Tipi</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>{SINAV_TIPLERI.map(s=>{const a=form.sinavTipi.includes(s.key); return(<button key={s.key} type="button" className={`sinav-btn${a?" on":""}`} onClick={()=>toggleSinav(s.key)}><div style={{fontWeight:800,fontSize:14}}>{s.label}</div><div style={{fontSize:9,opacity:.6,marginTop:2}}>{s.desc}</div>{a&&<div style={{fontSize:13,marginTop:3}}>✓</div>}</button>);})}</div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div style={S.field}><label style={S.label}>Öğrenci Sayısı</label><input {...inp("ogrenciSayisi")} type="number" min="0" placeholder="150" style={S.input}/></div><div style={S.field}><label style={S.label}>Durum</label><select {...inp("status")} style={S.input}>{STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></div></div><div style={S.field}><label style={S.label}>Not</label><textarea {...inp("note")} rows={2} style={{...S.input,resize:"vertical"}}/></div></div><div style={{padding:"12px 20px 28px",borderTop:"1px solid #F3F4F6",display:"flex",gap:8,flexShrink:0}}>{modal!=="add"&&<button onClick={()=>setConfirmDel(modal.id)} style={{...S.btnGhost,color:"#DC2626",borderColor:"#FECACA"}}>Sil</button>}<button onClick={()=>setModal(null)} style={S.btnGhost}>İptal</button><button onClick={saveForm} style={{...S.btnPrimary,flex:1}}>Kaydet</button></div></div></div>)}
 
+      {/* DELETE LEAD */}
       {confirmDel&&sayfa==="leads"&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmDel(null)}><div style={S.sheet}><div style={{padding:"32px 24px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🗑️</div><div style={{fontWeight:800,fontSize:16,marginBottom:8,color:DARK}}>Sil?</div><div style={{fontSize:13,color:"#9CA3AF",marginBottom:24}}>Bu işlem geri alınamaz.</div><div style={{display:"flex",gap:10}}><button onClick={()=>setConfirmDel(null)} style={{...S.btnGhost,flex:1}}>İptal</button><button onClick={()=>deleteLead(confirmDel)} style={{...S.btnPrimary,flex:1,background:"linear-gradient(135deg,#EF4444,#DC2626)"}}>Sil</button></div></div></div></div>)}
-{topluSilConfirm&&(
-  <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setTopluSilConfirm(false)}>
-    <div style={S.sheet}>
-      <div style={{padding:"32px 24px",textAlign:"center"}}>
-        <div style={{fontSize:48,marginBottom:12}}>🗑️</div>
-        <div style={{fontWeight:800,fontSize:16,marginBottom:8,color:DARK}}>{seciliLeads.size} kaydı sil?</div>
-        <div style={{fontSize:13,color:"#9CA3AF",marginBottom:24}}>Bu işlem geri alınamaz.</div>
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={()=>setTopluSilConfirm(false)} style={{...S.btnGhost,flex:1}}>İptal</button>
-          <button onClick={topluSil} style={{...S.btnPrimary,flex:1,background:"linear-gradient(135deg,#EF4444,#DC2626)"}}>Evet, Sil</button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+
+      {/* TOPLU SİLME CONFIRM */}
+      {topluSilConfirm&&(<div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setTopluSilConfirm(false)}><div style={S.sheet}><div style={{padding:"32px 24px",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>🗑️</div><div style={{fontWeight:800,fontSize:16,marginBottom:8,color:DARK}}>{seciliLeads.size} kaydı sil?</div><div style={{fontSize:13,color:"#9CA3AF",marginBottom:24}}>Bu işlem geri alınamaz.</div><div style={{display:"flex",gap:10}}><button onClick={()=>setTopluSilConfirm(false)} style={{...S.btnGhost,flex:1}}>İptal</button><button onClick={topluSil} style={{...S.btnPrimary,flex:1,background:"linear-gradient(135deg,#EF4444,#DC2626)"}}>Evet, Sil</button></div></div></div></div>)}
+
       {showImport&&<BulkImportModal onClose={()=>setShowImport(false)} onImport={fetchLeads} userId={session.user.id}/>}
     </div>
   );
