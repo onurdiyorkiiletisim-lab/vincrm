@@ -52,14 +52,12 @@ function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const handleLogin = async () => {
     setLoading(true); setError("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setError("E-posta veya şifre hatalı.");
     setLoading(false);
   };
-
   return (
     <div style={{ minHeight:"100vh", background:"#f6f6f5", display:"flex", alignItems:"center", justifyContent:"center", padding:20, fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap');*{box-sizing:border-box;margin:0;padding:0}`}</style>
@@ -67,18 +65,13 @@ function LoginScreen() {
         <div style={{ fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:500, letterSpacing:"-0.04em", marginBottom:8 }}>crm<span style={{ color:"#6366f1" }}>.</span></div>
         <div style={{ fontSize:13, color:"#aaa", marginBottom:28 }}>vintakip.com — Giriş Yap</div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          <div>
-            <label style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", display:"block", marginBottom:5 }}>E-posta</label>
-            <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ornek@mail.com" style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"10px 13px", fontSize:14, outline:"none", fontFamily:"inherit" }} />
-          </div>
-          <div>
-            <label style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Şifre</label>
-            <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"10px 13px", fontSize:14, outline:"none", fontFamily:"inherit" }} />
-          </div>
+          <div><label style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", display:"block", marginBottom:5 }}>E-posta</label>
+            <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ornek@mail.com" style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"10px 13px", fontSize:14, outline:"none", fontFamily:"inherit" }} /></div>
+          <div><label style={{ fontSize:11, fontWeight:700, color:"#999", letterSpacing:".07em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Şifre</label>
+            <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"10px 13px", fontSize:14, outline:"none", fontFamily:"inherit" }} /></div>
           {error && <div style={{ fontSize:13, color:"#ef4444", background:"#fef2f2", padding:"8px 12px", borderRadius:8 }}>{error}</div>}
           <button onClick={handleLogin} disabled={loading} style={{ background:"#1a1a1a", color:"#fff", border:"none", padding:12, borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", marginTop:4, opacity:loading?.6:1, fontFamily:"inherit" }}>
-            {loading?"Giriş yapılıyor...":"Giriş Yap"}
-          </button>
+            {loading?"Giriş yapılıyor...":"Giriş Yap"}</button>
         </div>
       </div>
     </div>
@@ -90,7 +83,6 @@ function BulkImportModal({ onClose, onImport, userId }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-
   const handleFile = (file) => {
     setError(""); setRows([]);
     const reader = new FileReader();
@@ -106,43 +98,38 @@ function BulkImportModal({ onClose, onImport, userId }) {
     };
     reader.readAsArrayBuffer(file);
   };
-
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([["Ad Soyad","Telefon","Kurum"]]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Leads");
     XLSX.writeFile(wb, "sablon.xlsx");
   };
-
   const handleImport = async () => {
     if (!rows.length) return;
     setLoading(true);
     const payload = rows.map(r => ({
-      name: r["Ad Soyad"]||r["ad soyad"]||r["name"]||r["Name"]||r["full_name"]||r["Full Name"]||"",
+      name: r["Ad Soyad"]||r["ad soyad"]||r["name"]||r["Name"]||r["full_name"]||r["Full Name"]||r["first_name"]||"",
       phone: String(r["Telefon"]||r["telefon"]||r["phone"]||r["Phone Number"]||r["phone_number"]||""),
-      kurum: r["Kurum"]||r["kurum"]||r["Kurum / Okul adı"]||r["school"]||r["School"]||"",
+      kurum: r["Kurum"]||r["kurum"]||r["school"]||r["School"]||"",
       status:"yeni", sinav_tipi:[], ogrenci_sayisi:0, user_id:userId,
-    })).filter(r => r.name || r.phone);
+    })).filter(r => r.name||r.phone);
     const { error } = await supabase.from("leads").insert(payload);
-    if (error) setError("Yükleme hatası: " + error.message);
+    if (error) setError("Yükleme hatası: "+error.message);
     else { setDone(true); onImport(); }
     setLoading(false);
   };
-
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{ background:"#fff", width:"100%", maxWidth:520, borderRadius:"20px 20px 0 0", maxHeight:"80vh", display:"flex", flexDirection:"column" }}>
-        {/* Header */}
         <div style={{ padding:"12px 20px", borderBottom:"1px solid #f0f0f0", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-          <div style={{ width:36, height:4, background:"#e5e5e5", borderRadius:99, position:"absolute", left:"50%", transform:"translateX(-50%)", top:8 }} />
           <div style={{ fontWeight:700, fontSize:15 }}>📥 Toplu Lead Yükle</div>
-          <button onClick={onClose} style={{ width:36, height:36, borderRadius:"50%", background:"#f5f5f5", border:"none", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#555", flexShrink:0 }}>×</button>
+          <button onClick={onClose} style={{ width:36, height:36, borderRadius:"50%", background:"#f5f5f5", border:"none", fontSize:18, cursor:"pointer" }}>×</button>
         </div>
         <div style={{ overflowY:"auto", flex:1, padding:"16px 20px", display:"flex", flexDirection:"column", gap:12 }}>
           {done ? (
             <div style={{ textAlign:"center", padding:"32px 0" }}>
               <div style={{ fontSize:48, marginBottom:12 }}>🎉</div>
-              <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>{rows.length} kayıt yüklendi!</div>
+              <div style={{ fontWeight:700, fontSize:16 }}>{rows.length} kayıt yüklendi!</div>
             </div>
           ) : (
             <>
@@ -157,11 +144,7 @@ function BulkImportModal({ onClose, onImport, userId }) {
                 <input id="fileInput" type="file" accept=".xlsx,.csv" style={{ display:"none" }} onChange={e=>e.target.files[0]&&handleFile(e.target.files[0])} />
               </div>
               {error && <div style={{ fontSize:13, color:"#ef4444", background:"#fef2f2", padding:"8px 12px", borderRadius:8 }}>{error}</div>}
-              {rows.length>0 && (
-                <div style={{ fontSize:13, color:"#10b981", background:"#ecfdf5", padding:"8px 12px", borderRadius:8, fontWeight:600 }}>
-                  ✅ {rows.length} kayıt hazır, yüklemek için butona basın.
-                </div>
-              )}
+              {rows.length>0 && <div style={{ fontSize:13, color:"#10b981", background:"#ecfdf5", padding:"8px 12px", borderRadius:8, fontWeight:600 }}>✅ {rows.length} kayıt hazır!</div>}
             </>
           )}
         </div>
@@ -170,6 +153,135 @@ function BulkImportModal({ onClose, onImport, userId }) {
           {!done && <button onClick={handleImport} disabled={!rows.length||loading} style={{ flex:2, background:"#1a1a1a", color:"#fff", border:"none", padding:"11px", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", opacity:(!rows.length||loading)?.4:1 }}>{loading?"Yükleniyor...":rows.length>0?`${rows.length} Kaydı Yükle`:"Dosya Seçin"}</button>}
         </div>
       </div>
+    </div>
+  );
+}
+
+// RAPOR SAYFASI
+function RaporSayfasi({ leads }) {
+  const statusDagilim = STATUSES.map(s => ({
+    ...s,
+    sayi: leads.filter(l => l.status === s.key).length,
+    oran: leads.length ? Math.round(leads.filter(l => l.status === s.key).length / leads.length * 100) : 0,
+  }));
+
+  const sinavDagilim = SINAV_TIPLERI.map(s => ({
+    ...s,
+    sayi: leads.filter(l => (l.sinav_tipi||[]).includes(s.key)).length,
+  }));
+
+  const ilDagilim = useMemo(() => {
+    const map = {};
+    leads.forEach(l => { if (l.il) map[l.il] = (map[l.il]||0) + 1; });
+    return Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0,8);
+  }, [leads]);
+
+  const aylikDagilim = useMemo(() => {
+    const map = {};
+    leads.forEach(l => {
+      if (l.created_at) {
+        const ay = l.created_at.slice(0,7);
+        map[ay] = (map[ay]||0) + 1;
+      }
+    });
+    return Object.entries(map).sort((a,b) => a[0].localeCompare(b[0])).slice(-6);
+  }, [leads]);
+
+  const maxAylik = Math.max(...aylikDagilim.map(a => a[1]), 1);
+  const maxIl = Math.max(...ilDagilim.map(i => i[1]), 1);
+
+  const toplamOgrenci = leads.reduce((s,l) => s+(Number(l.ogrenci_sayisi)||0), 0);
+  const kazanilanOgrenci = leads.filter(l=>l.status==="kazanildi").reduce((s,l) => s+(Number(l.ogrenci_sayisi)||0), 0);
+  const kazanmaOrani = leads.filter(l=>["kazanildi","kaybedildi"].includes(l.status)).length
+    ? Math.round(leads.filter(l=>l.status==="kazanildi").length / leads.filter(l=>["kazanildi","kaybedildi"].includes(l.status)).length * 100)
+    : 0;
+
+  return (
+    <div style={{ padding:"14px", maxWidth:640, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+
+      {/* Özet Kartlar */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        {[
+          { icon:"👥", label:"Toplam Lead", value:leads.length },
+          { icon:"🏆", label:"Kazanma Oranı", value:`%${kazanmaOrani}` },
+          { icon:"🎓", label:"Toplam Öğrenci", value:toplamOgrenci.toLocaleString("tr") },
+          { icon:"✅", label:"Kazanılan Öğrenci", value:kazanilanOgrenci.toLocaleString("tr") },
+        ].map(s => (
+          <div key={s.label} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"14px 16px" }}>
+            <div style={{ fontSize:20, marginBottom:6 }}>{s.icon}</div>
+            <div style={{ fontSize:22, fontWeight:700, letterSpacing:"-0.03em" }}>{s.value}</div>
+            <div style={{ fontSize:11, color:"#bbb", marginTop:3, fontWeight:500 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Durum Dağılımı */}
+      <div style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"16px" }}>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>📊 Durum Dağılımı</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {statusDagilim.map(s => (
+            <div key={s.key}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:13, fontWeight:500 }}>{s.label}</span>
+                <span style={{ fontSize:13, color:"#888" }}>{s.sayi} lead — %{s.oran}</span>
+              </div>
+              <div style={{ height:8, background:"#f5f5f5", borderRadius:99, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${s.oran}%`, background:s.color, borderRadius:99, transition:"width .3s" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Aylık Lead Grafiği */}
+      {aylikDagilim.length > 0 && (
+        <div style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"16px" }}>
+          <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>📈 Aylık Lead Girişi</div>
+          <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:100 }}>
+            {aylikDagilim.map(([ay, sayi]) => (
+              <div key={ay} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:"#6366f1" }}>{sayi}</div>
+                <div style={{ width:"100%", background:"#6366f1", borderRadius:"4px 4px 0 0", height:`${(sayi/maxAylik)*80}px`, minHeight:4, transition:"height .3s" }} />
+                <div style={{ fontSize:9, color:"#bbb", textAlign:"center" }}>{ay.slice(5)}/{ay.slice(2,4)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sınav Tipi Dağılımı */}
+      <div style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"16px" }}>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🎓 Sınav Tipi Dağılımı</div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+          {sinavDagilim.map(s => (
+            <div key={s.key} style={{ textAlign:"center", background:"#f9f9f9", borderRadius:10, padding:"12px 8px" }}>
+              <div style={{ fontSize:20, fontWeight:700, color: s.key==="TYT"?"#92400e":s.key==="AYT"?"#5b21b6":"#15803d" }}>{s.sayi}</div>
+              <div style={{ fontSize:12, fontWeight:700, marginTop:2 }}>{s.label}</div>
+              <div style={{ fontSize:10, color:"#bbb" }}>{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* İllere Göre Dağılım */}
+      {ilDagilim.length > 0 && (
+        <div style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"16px" }}>
+          <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🗺️ İllere Göre Dağılım (Top 8)</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {ilDagilim.map(([il, sayi]) => (
+              <div key={il}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                  <span style={{ fontSize:13, fontWeight:500 }}>{il}</span>
+                  <span style={{ fontSize:13, color:"#888" }}>{sayi}</span>
+                </div>
+                <div style={{ height:6, background:"#f5f5f5", borderRadius:99, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${(sayi/maxIl)*100}%`, background:"#3b82f6", borderRadius:99 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -185,6 +297,7 @@ export default function App() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [aktifSayfa, setAktifSayfa] = useState("leads"); // "leads" | "rapor"
 
   useEffect(() => {
     supabase.auth.getSession().then(({data:{session}})=>setSession(session));
@@ -243,7 +356,7 @@ export default function App() {
         input,select,textarea,button{font-family:inherit}
         .card-hover{transition:box-shadow .15s;cursor:pointer}
         .card-hover:active{opacity:.85}
-        .btn-primary{background:#1a1a1a;color:#fff;border:none;padding:11px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s}
+        .btn-primary{background:#1a1a1a;color:#fff;border:none;padding:11px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
         .btn-primary:disabled{opacity:.4;cursor:not-allowed}
         .btn-ghost{background:transparent;border:1.5px solid #e5e5e5;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;color:#555}
         .field label{display:block;font-size:11px;font-weight:700;color:#999;letter-spacing:.07em;text-transform:uppercase;margin-bottom:5px}
@@ -256,11 +369,18 @@ export default function App() {
         .bottom-sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;max-height:88vh;display:flex;flex-direction:column}
         .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center}
         @media(min-width:600px){.overlay{align-items:center}.bottom-sheet{border-radius:16px;max-width:500px;max-height:85vh}}
+        .nav-btn{background:none;border:none;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#888;transition:all .15s}
+        .nav-btn.active{background:#1a1a1a;color:#fff}
       `}</style>
 
       {/* TOP BAR */}
       <div style={{ background:"#fff", borderBottom:"1px solid #ebebeb", padding:"0 14px", display:"flex", alignItems:"center", height:54, gap:8, position:"sticky", top:0, zIndex:50 }}>
         <div style={{ fontFamily:"'DM Mono',monospace", fontWeight:500, fontSize:17, letterSpacing:"-0.04em" }}>crm<span style={{ color:"#6366f1" }}>.</span></div>
+        {/* NAVİGASYON */}
+        <div style={{ display:"flex", gap:4, marginLeft:8 }}>
+          <button className={`nav-btn${aktifSayfa==="leads"?" active":""}`} onClick={()=>setAktifSayfa("leads")}>Leads</button>
+          <button className={`nav-btn${aktifSayfa==="rapor"?" active":""}`} onClick={()=>setAktifSayfa("rapor")}>📊 Rapor</button>
+        </div>
         <div style={{ flex:1 }} />
         <button onClick={()=>setShowImport(true)} style={{ background:"#f5f5f5", border:"none", padding:"7px 11px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", color:"#444" }}>📥</button>
         <button onClick={()=>supabase.auth.signOut()} style={{ background:"#f5f5f5", border:"none", padding:"7px 11px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", color:"#444" }}>Çıkış</button>
@@ -269,65 +389,63 @@ export default function App() {
         </button>
       </div>
 
-      {/* CONTENT */}
-      <div style={{ padding:"14px", maxWidth:640, margin:"0 auto" }}>
+      {/* RAPOR SAYFASI */}
+      {aktifSayfa==="rapor" && <RaporSayfasi leads={leads} />}
 
-        {/* STATS - 3 kutu */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-          {[
-            { label:"Toplam Lead",        value:stats.total,                           icon:"👥" },
-            { label:"Kazanılan",          value:stats.kazanildi,                       icon:"✅" },
-            { label:"Kazanılan Öğrenci",  value:stats.topOgrenci.toLocaleString("tr"), icon:"🎓" },
-          ].map(s => (
-            <div key={s.label} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"12px 10px" }}>
-              <div style={{ fontSize:18, marginBottom:5 }}>{s.icon}</div>
-              <div style={{ fontSize:20, fontWeight:700, letterSpacing:"-0.03em", lineHeight:1 }}>{s.value}</div>
-              <div style={{ fontSize:10, color:"#bbb", marginTop:4, fontWeight:500, lineHeight:1.3 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* SEARCH */}
-        <div style={{ position:"relative", marginBottom:10 }}>
-          <span style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:"#ccc", fontSize:15 }}>🔍</span>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="İsim, kurum veya il ara…"
-            style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"10px 13px 10px 38px", fontSize:14, outline:"none", background:"#fff" }} />
-        </div>
-
-        {/* FILTER */}
-        <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6, marginBottom:12, WebkitOverflowScrolling:"touch" }}>
-          {[{key:"tümü",label:"Tümü"},...STATUSES].map(s => {
-            const active = filterStatus===s.key;
-            return <button key={s.key} className="chip-filter" onClick={()=>setFilterStatus(s.key)} style={{ background:active?"#1a1a1a":"#fff", color:active?"#fff":"#666", borderColor:active?"#1a1a1a":"#e8e8e8" }}>{s.label}</button>;
-          })}
-        </div>
-
-        {/* LIST */}
-        {loading && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Yükleniyor…</div>}
-        {!loading && filtered.length===0 && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Kayıt bulunamadı.</div>}
-        <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
-          {filtered.map(lead => (
-            <div key={lead.id} className="card-hover" onClick={()=>setDetailId(lead.id)}
-              style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"13px 14px" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-                <div style={{ flex:1, minWidth:0, marginRight:8 }}>
-                  <div style={{ fontWeight:700, fontSize:14, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{lead.name}</div>
-                  <div style={{ fontSize:12, color:"#aaa", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{lead.kurum||"—"}</div>
-                </div>
-                <StatusBadge statusKey={lead.status} />
+      {/* LEADS SAYFASI */}
+      {aktifSayfa==="leads" && (
+        <div style={{ padding:"14px", maxWidth:640, margin:"0 auto" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
+            {[
+              { label:"Toplam Lead", value:stats.total, icon:"👥" },
+              { label:"Kazanılan", value:stats.kazanildi, icon:"✅" },
+              { label:"Kazanılan Öğrenci", value:stats.topOgrenci.toLocaleString("tr"), icon:"🎓" },
+            ].map(s => (
+              <div key={s.label} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"12px 10px" }}>
+                <div style={{ fontSize:18, marginBottom:5 }}>{s.icon}</div>
+                <div style={{ fontSize:20, fontWeight:700, letterSpacing:"-0.03em", lineHeight:1 }}>{s.value}</div>
+                <div style={{ fontSize:10, color:"#bbb", marginTop:4, fontWeight:500, lineHeight:1.3 }}>{s.label}</div>
               </div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
-                <SinavBadge types={lead.sinav_tipi} />
-                <div style={{ display:"flex", gap:8, fontSize:11, color:"#bbb" }}>
-                  {lead.il && <span>📍{lead.il}</span>}
-                  {lead.ogrenci_sayisi>0 && <span>🎓{lead.ogrenci_sayisi}</span>}
+            ))}
+          </div>
+
+          <div style={{ position:"relative", marginBottom:10 }}>
+            <span style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:"#ccc", fontSize:15 }}>🔍</span>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="İsim, kurum veya il ara…" style={{ width:"100%", border:"1.5px solid #e8e8e8", borderRadius:10, padding:"10px 13px 10px 38px", fontSize:14, outline:"none", background:"#fff" }} />
+          </div>
+
+          <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6, marginBottom:12, WebkitOverflowScrolling:"touch" }}>
+            {[{key:"tümü",label:"Tümü"},...STATUSES].map(s => {
+              const active = filterStatus===s.key;
+              return <button key={s.key} className="chip-filter" onClick={()=>setFilterStatus(s.key)} style={{ background:active?"#1a1a1a":"#fff", color:active?"#fff":"#666", borderColor:active?"#1a1a1a":"#e8e8e8" }}>{s.label}</button>;
+            })}
+          </div>
+
+          {loading && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Yükleniyor…</div>}
+          {!loading && filtered.length===0 && <div style={{ textAlign:"center", padding:"40px", color:"#ccc" }}>Kayıt bulunamadı.</div>}
+          <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+            {filtered.map(lead => (
+              <div key={lead.id} className="card-hover" onClick={()=>setDetailId(lead.id)} style={{ background:"#fff", border:"1px solid #ebebeb", borderRadius:12, padding:"13px 14px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                  <div style={{ flex:1, minWidth:0, marginRight:8 }}>
+                    <div style={{ fontWeight:700, fontSize:14, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{lead.name}</div>
+                    <div style={{ fontSize:12, color:"#aaa", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{lead.kurum||"—"}</div>
+                  </div>
+                  <StatusBadge statusKey={lead.status} />
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
+                  <SinavBadge types={lead.sinav_tipi} />
+                  <div style={{ display:"flex", gap:8, fontSize:11, color:"#bbb" }}>
+                    {lead.il && <span>📍{lead.il}</span>}
+                    {lead.ogrenci_sayisi>0 && <span>🎓{lead.ogrenci_sayisi}</span>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <div style={{ marginTop:10, fontSize:12, color:"#ccc", textAlign:"center" }}>{filtered.length} kayıt</div>
         </div>
-        <div style={{ marginTop:10, fontSize:12, color:"#ccc", textAlign:"center" }}>{filtered.length} kayıt</div>
-      </div>
+      )}
 
       {/* DETAIL */}
       {currentLead && (
@@ -423,7 +541,7 @@ export default function App() {
       {/* DELETE */}
       {confirmDelete && (
         <div className="overlay" onClick={e=>e.target===e.currentTarget&&setConfirmDelete(null)}>
-          <div className="bottom-sheet" style={{ maxHeight:"auto" }}>
+          <div className="bottom-sheet">
             <div style={{ padding:"32px 24px", textAlign:"center" }}>
               <div style={{ fontSize:40, marginBottom:12 }}>🗑️</div>
               <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>Silmek istiyor musunuz?</div>
